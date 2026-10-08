@@ -129,3 +129,42 @@ input[type=date], input[type=email], input[type=text], select { width: 100%; min
   .reel-win.hit, .reel-win.settle { animation: none; }
   .bar > div { transition: none; }
 }
+
+/* Header controls */
+.top { gap: 8px; }
+.tools { display: flex; gap: 4px; }
+.iconbtn { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); border-radius: 10px; cursor: pointer; }
+.iconbtn[aria-pressed=true] { color: var(--gold); }
+.iconbtn svg { width: 22px; height: 22px; }
+
+/* Week strip: a plain tally. Missed days stay neutral. */
+.week { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 2px 4px; }
+.week .days { display: flex; gap: 8px; }
+.day { display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.day i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); display: block; }
+.day.played i { background: var(--gold); border-color: var(--gold); }
+.day.today i { border-color: var(--sky); }
+.day.played.today i { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(50,203,240,.55); }
+
+/* Sets */
+.setrow { padding: 14px 0; border-top: 1px solid var(--line-soft); }
+.setrow:first-of-type { border-top: 0; }
+.setrow .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.setrow .glyphs { display: flex; gap: 6px; margin: 10px 0 2px; }
+.setrow .glyphs svg { width: 30px; height: 30px; display: block; }
+.setrow .glyphs span.missing svg { filter: grayscale(1) brightness(.5); opacity: .5; }
+.setrow.done .head b { color: var(--gold); }
+.chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--sky); color: #172123; }
+.chip.dim { background: var(--line-soft); color: var(--paper); }
+.bonusline { color: var(--sky); font-weight: 700; font-size: 15px; margin-top: 2px; }
+
+/* Dialogs */
+.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(10,16,17,.78); }
+.dialog { width: 100%; max-width: 380px; max-height: 90dvh; overflow: auto; background: var(--bg-2); border: 2px solid var(--gold); border-radius: 20px; padding: 22px 20px 20px; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.center { text-align: center; }
+.medal { width: 92px; height: 92px; display: block; margin: 0 auto 8px; animation: pop .5s cubic-bezier(.2,1.3,.3,1) 1; }
+@keyframes pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.steps { display: flex; gap: 6px; margin-bottom: 14px; }
+.steps span { height: 4px; flex: 1; border-radius: 4px; background: var(--line-soft); }
+.steps span.on { background: var(--gold); }
+@media (prefers-reduced-motion: reduce) { .medal { animation: none; } }

@@ -33,6 +33,25 @@ export async function allowance(q: Query, playerId: string) {
   };
 }
 
+/** Points for a given week: spin points plus one-off set bonuses awarded that week. */
+export async function weekPoints(q: Query, playerId: string, week: string): Promise<number> {
+  const [row] = await q<{ points: number }>(
+    `select ((select coalesce(sum(points), 0) from spins where player_id = $1 and week_start = $2)
+           + (select coalesce(sum(points), 0) from set_awards where player_id = $1 and week_start = $2))::int as points`,
+    [playerId, week],
+  );
+  return row.points;
+}
+
+/** Distinct symbols this player has ever landed. */
+export async function ownedSymbols(q: Query, playerId: string): Promise<Set<string>> {
+  const rows = await q<{ s: string }>(
+    "select distinct s from spins, jsonb_array_elements_text(symbols) s where player_id = $1",
+    [playerId],
+  );
+  return new Set(rows.map((r) => r.s));
+}
+
 export async function buildState(playerId: string) {
   const db = await ready();
   const q = db.query;
@@ -45,10 +64,7 @@ export async function buildState(playerId: string) {
   if (!player) return null;
 
   const a = await allowance(q, playerId);
-  const [{ points }] = await q<{ points: number }>(
-    "select coalesce(sum(points), 0)::int as points from spins where player_id = $1 and week_start = $2",
-    [playerId, week],
-  );
+  const points = await weekPoints(q, playerId, week);
   const collectionRows = await q<{ symbol: string; n: number }>(
     `select s as symbol, count(*)::int as n
        from spins, jsonb_array_elements_text(symbols) s
@@ -59,6 +75,13 @@ export async function buildState(playerId: string) {
     "select symbols, outcome, points, is_bonus from spins where player_id = $1 and play_date = $2 order by spin_number",
     [playerId, utcDate()],
   );
+  const days = await q<{ play_date: string }>(
+    "select distinct play_date from spins where player_id = $1 and week_start = $2 order by play_date",
+    [playerId, week],
+  );
+  const awards = await q<{ set_id: string }>("select set_id from set_awards where player_id = $1", [playerId]);
+  const awarded = new Set(awards.map((r) => r.set_id));
+  const owned = new Set(collectionRows.map((r) => r.symbol));
   const { current, next } = tierFor(points);
 
   return {
@@ -74,8 +97,19 @@ export async function buildState(playerId: string) {
     },
     today: todays,
     collection: Object.fromEntries(collectionRows.map((r) => [r.symbol, r.n])),
+    sets: config.sets.map((s) => ({
+      id: s.id,
+      name: s.name,
+      symbols: s.symbols,
+      points: s.points,
+      found: s.symbols.filter((id) => owned.has(id)).length,
+      total: s.symbols.length,
+      complete: awarded.has(s.id),
+    })),
     week: {
       start: week,
+      today: utcDate(),
+      daysPlayed: days.map((d) => d.play_date),
       points,
       tier: current,
       nextTier: next,

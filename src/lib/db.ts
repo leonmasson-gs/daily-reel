@@ -68,6 +68,7 @@ create table if not exists players (
   age_confirmed_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+alter table players add column if not exists recap_seen_week text;
 create table if not exists spins (
   id bigserial primary key,
   player_id uuid not null references players(id),
@@ -88,6 +89,15 @@ create table if not exists bonus_grants (
   invitee_id uuid not null unique references players(id),
   week_start text not null,
   created_at timestamptz not null default now()
+);
+create table if not exists set_awards (
+  id bigserial primary key,
+  player_id uuid not null references players(id),
+  set_id text not null,
+  week_start text not null,
+  points int not null,
+  created_at timestamptz not null default now(),
+  unique (player_id, set_id)
 );
 create table if not exists events (
   id bigserial primary key,

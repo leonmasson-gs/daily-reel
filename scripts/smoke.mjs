@@ -60,8 +60,11 @@ r = await c.call("/api/spin", "POST");
 expect("fourth spin is refused (429) with a reset time", r.status === 429 && !!r.json.resetsAt, r.status);
 const st = (await c.call("/api/state")).json.player;
 expect("limit survives a reload (state still 0 left)", st.spins.remaining === 0 && st.today.length === 3);
-const pointsSum = results.reduce((n, x) => n + x.json.result.points, 0);
-expect("weekly points equal the sum of spins", st.week.points === pointsSum, [st.week.points, pointsSum]);
+const pointsSum = results.reduce((n, x) => n + x.json.result.points + (x.json.newSets ?? []).reduce((m, s) => m + s.points, 0), 0);
+expect("weekly points equal spin points plus any set bonuses", st.week.points === pointsSum, [st.week.points, pointsSum]);
+expect("spin response carries newSets and tierUp", results.every((x) => Array.isArray(x.json.newSets) && "tierUp" in x.json));
+expect("state lists the four sets", st.sets.length === 4 && st.sets.every((s) => s.total >= 2));
+expect("today counts as a day played", st.week.daysPlayed.includes(st.week.today) && st.week.daysPlayed.length === 1, st.week.daysPlayed);
 const collected = Object.values(st.collection).reduce((a, b) => a + b, 0);
 expect("collection holds 9 symbols after 3 spins", collected === 9, collected);
 
@@ -98,6 +101,10 @@ const b3 = await inviter.call("/api/spin", "POST");
 expect("inviter can use exactly 2 bonus spins", b1.status === 200 && b2.status === 200 && b3.status === 429, [b1.status, b2.status, b3.status]);
 expect("bonus spins are flagged", b1.json.result.isBonus && b2.json.result.isBonus);
 
+// recap
+expect("no recap for a player in their first week", (await inviter.call("/api/recap")).json.recap === null);
+expect("recap needs an age-gated player (401 on mark seen)", (await new Client().call("/api/recap", "POST")).status === 401);
+
 // email + events
 r = await inviter.call("/api/email", "POST", { email: "nope", consent: true });
 expect("bad email is refused", r.status === 400);
@@ -106,6 +113,7 @@ expect("email without consent is refused", r.status === 400);
 r = await inviter.call("/api/email", "POST", { email: "Test@Example.com", consent: true });
 expect("valid email with consent is saved", r.status === 200 && (await inviter.call("/api/state")).json.player.emailSaved === true);
 expect("unknown client event is refused", (await inviter.call("/api/event", "POST", { name: "drop_table" })).status === 400);
+expect("intro events are accepted", (await inviter.call("/api/event", "POST", { name: "intro_completed" })).status === 200);
 expect("known client event is accepted", (await inviter.call("/api/event", "POST", { name: "tier_viewed" })).status === 200);
 
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nAll checks passed");

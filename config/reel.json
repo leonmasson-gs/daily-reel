@@ -113,5 +113,50 @@
     "title": "Daily Reel",
     "tagline": "Three free spins a day. Collect symbols and build your weekly tier.",
     "footer": "Free to play. No stake, no purchase, no prizes. 18+ only."
-  }
+  },
+  "sets": [
+    {
+      "id": "everyday",
+      "name": "Everyday trio",
+      "symbols": [
+        "cherry",
+        "bell",
+        "lemon"
+      ],
+      "points": 10
+    },
+    {
+      "id": "lucky",
+      "name": "Lucky pair",
+      "symbols": [
+        "clover",
+        "star"
+      ],
+      "points": 15
+    },
+    {
+      "id": "treasury",
+      "name": "Treasury",
+      "symbols": [
+        "gem",
+        "crown"
+      ],
+      "points": 30
+    },
+    {
+      "id": "full-reel",
+      "name": "Full reel",
+      "symbols": [
+        "cherry",
+        "bell",
+        "lemon",
+        "clover",
+        "star",
+        "gem",
+        "crown",
+        "golden-reel"
+      ],
+      "points": 75
+    }
+  ]
 }
