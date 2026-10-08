@@ -70,6 +70,24 @@ export default function Game() {
     setPlayer(r.player);
   }, []);
 
+  // Each screen gets its own history entry (#rewards, #tier, ...) so the Back button and shared links work.
+  const goTab = useCallback((t: Tab) => {
+    setTab(t);
+    window.scrollTo({ top: 0 });
+    const url = window.location.pathname + window.location.search + (t === "play" ? "" : `#${t}`);
+    if (url !== window.location.pathname + window.location.search + window.location.hash) window.history.pushState({ tab: t }, "", url);
+  }, []);
+  useEffect(() => {
+    const fromHash = (): Tab => {
+      const h = window.location.hash.slice(1) as Tab;
+      return (["collection", "tier", "invite", "rewards"] as Tab[]).includes(h) ? h : "play";
+    };
+    setTab(fromHash());
+    const onPop = () => { setTab(fromHash()); window.scrollTo({ top: 0 }); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   useEffect(() => {
     fetch("/api/config").then((r) => r.json()).then(setCfg);
     refresh();
@@ -128,7 +146,11 @@ export default function Game() {
   return (
     <main className="app">
       <header className="top">
-        <h1 className="brand"><i aria-hidden />{cfg.copy.title}</h1>
+        <h1 className="brand">
+          {player ? (
+            <button className="brandbtn" onClick={() => goTab("play")} aria-label={`${cfg.copy.title}. Go to the game`}><i aria-hidden />{cfg.copy.title}</button>
+          ) : (<><i aria-hidden />{cfg.copy.title}</>)}
+        </h1>
         {player && (
           <div className="tools">
             <button className="iconbtn" aria-pressed={sound} aria-label={sound ? "Sound on. Turn off" : "Sound off. Turn on"} onClick={toggleSound}>
@@ -151,7 +173,13 @@ export default function Game() {
         <AgeGate cfg={cfg} onDone={refresh} />
       ) : (
         <>
-          <button className="meter" onClick={() => { setTab("tier"); track("tier_viewed"); }} aria-label="Open weekly tier">
+          {tab !== "play" && (
+            <button className="backbar" onClick={() => goTab("play")}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 5l-7 7 7 7" /></svg>
+              Back to the game
+            </button>
+          )}
+          <button className="meter" onClick={() => { goTab("tier"); track("tier_viewed"); }} aria-label="Open weekly tier">
             <div className="row1">
               <b>{player.week.tier.name}</b>
               <span className="muted tnum">
@@ -161,7 +189,7 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} region={region} onOpenRewards={() => setTab("rewards")} onNotify={notifyRewards} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} region={region} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
           {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
           {tab === "invite" && <Invite cfg={cfg} player={player} />}
@@ -174,7 +202,7 @@ export default function Game() {
 
           <nav className="nav" aria-label="Main"><div className="in">
             {tabs.map((t) => (
-              <button key={t.k} aria-current={tab === t.k ? "page" : undefined} onClick={() => { setTab(t.k); if (t.k === "tier") track("tier_viewed"); }}>
+              <button key={t.k} aria-current={tab === t.k ? "page" : undefined} onClick={() => { goTab(t.k); if (t.k === "tier") track("tier_viewed"); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{t.icon}</svg>
                 {t.label}
               </button>

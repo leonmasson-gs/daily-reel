@@ -87,6 +87,7 @@ export default function AdminStats() {
   if (state === "login" || !stats) {
     return (
       <main className="app">
+        <a className="backbar" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 5l-7 7 7 7" /></svg>Back to the game</a>
         <h1 className="brand" style={{ marginBottom: 12 }}><i aria-hidden />Daily Reel stats</h1>
         <div className="panel">
           <h2>Team access</h2>
@@ -108,6 +109,7 @@ export default function AdminStats() {
 
   return (
     <main className="app wide">
+      <a className="backbar" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 5l-7 7 7 7" /></svg>Back to the game</a>
       <header className="top">
         <h1 className="brand"><i aria-hidden />Daily Reel stats</h1>
         <div style={{ display: "flex", gap: 8 }}>

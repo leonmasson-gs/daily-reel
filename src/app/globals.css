@@ -199,3 +199,10 @@ input[type=date], input[type=email], input[type=text], select { width: 100%; min
 .miniladder { list-style: none; padding: 0; margin: 10px 0 0; }
 .miniladder li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
 .notify { border-top: 1px solid var(--line-soft); padding-top: 12px; margin-bottom: 12px; }
+
+/* Navigation: always a clear way back */
+.brandbtn { display: inline-flex; align-items: center; background: none; border: 0; padding: 4px 2px; min-height: 44px; font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer; }
+.brandbtn i, .brand > i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); margin-right: 8px; box-shadow: inset 0 0 0 3px rgba(23,33,35,.45); }
+.backbar { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 14px 6px 8px; margin: 0 0 14px -6px; background: none; border: 1.5px solid var(--line); border-radius: 999px; color: var(--paper); font-weight: 700; font-size: 15px; cursor: pointer; text-decoration: none; }
+.backbar svg { width: 20px; height: 20px; }
+.backbar:hover { border-color: var(--gold); }
