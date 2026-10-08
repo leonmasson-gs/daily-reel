@@ -3,13 +3,13 @@ import { config } from "@/lib/config";
 import { GlyphShapes, RARITY_COLOR } from "@/components/Glyph";
 
 // Share images. Only whitelisted values are drawn, never free text from the URL.
-const INK = "#172123";
-const PANEL = "#374d50";
-const GOLD = "#ffd200";
-const SKY = "#32cbf0";
-const PAPER = "#f0f0f0";
-const MUTED = "#a9bbbd";
-const MEDAL: Record<string, string> = { bronze: "#c27c45", silver: "#d3dcdd", gold: "#ffd200", platinum: "#32cbf0" };
+const INK = "#0E2A4D";
+const PANEL = "#1D4876";
+const GOLD = "#C88A2E";
+const SKY = "#4DA7FF";
+const PAPER = "#F4F1EA";
+const MUTED = "#B8B2A4";
+const MEDAL: Record<string, string> = { bronze: "#B07A45", silver: "#CFCBBF", gold: "#C88A2E", platinum: "#4DA7FF" };
 
 const num = (v: string | null, max: number) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
 
@@ -17,9 +17,9 @@ function Symbol({ id, size, on }: { id: string; size: number; on: boolean }) {
   const sym = config.symbols.find((s) => s.id === id)!;
   const c = RARITY_COLOR[sym.rarity] ?? RARITY_COLOR.Common;
   return (
-    <div style={{ display: "flex", width: size, height: size, alignItems: "center", justifyContent: "center", borderRadius: size / 5, background: "#0f1718", opacity: on ? 1 : 0.28 }}>
+    <div style={{ display: "flex", width: size, height: size, alignItems: "center", justifyContent: "center", borderRadius: size / 5, background: "#081A31", opacity: on ? 1 : 0.28 }}>
       <svg width={size * 0.68} height={size * 0.68} viewBox="0 0 64 64">
-        {GlyphShapes({ id, c: on ? c : "#7c8d8f" })}
+        {GlyphShapes({ id, c: on ? c : "#6F7E92" })}
       </svg>
     </div>
   );
@@ -32,8 +32,8 @@ function Medal({ tier, size }: { tier: string; size: number }) {
       <path d="M30 4h14l8 28H38z" fill={SKY} opacity="0.85" />
       <path d="M66 4H52l-8 28h14z" fill={GOLD} opacity="0.85" />
       <circle cx="48" cy="60" r="32" fill={c} />
-      <circle cx="48" cy="60" r="23" fill="none" stroke="#14201f" strokeOpacity="0.4" strokeWidth="3" />
-      <polygon points="48,45 52.6,55.4 63.9,56.1 55.3,63.5 58,74.4 48,68.5 38,74.4 40.7,63.5 32.1,56.1 43.4,55.4" fill="#14201f" fillOpacity="0.5" />
+      <circle cx="48" cy="60" r="23" fill="none" stroke="#081A31" strokeOpacity="0.4" strokeWidth="3" />
+      <polygon points="48,45 52.6,55.4 63.9,56.1 55.3,63.5 58,74.4 48,68.5 38,74.4 40.7,63.5 32.1,56.1 43.4,55.4" fill="#081A31" fillOpacity="0.5" />
     </svg>
   );
 }

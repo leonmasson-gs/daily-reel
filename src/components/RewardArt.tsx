@@ -1,5 +1,5 @@
 // Simple flat artwork for the sample rewards. All of it is placeholder.
-const GOLD = "#ffd200", SKY = "#32cbf0", INK = "#14201f", PANEL = "#44595c", COPPER = "#c27c45", PAPER = "#f0f0f0";
+const GOLD = "#C88A2E", SKY = "#4DA7FF", INK = "#081A31", PANEL = "#225080", COPPER = "#B07A45", PAPER = "#F4F1EA";
 
 export type ArtKind = "badge" | "gift" | "voucher" | "hamper" | "ticket" | "star";
 
@@ -18,7 +18,7 @@ export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: nu
       return (
         <svg {...common}>
           <rect x="12" y="28" width="40" height="26" rx="3" fill={SKY} />
-          <rect x="8" y="20" width="48" height="11" rx="3" fill="#2aa9c9" />
+          <rect x="8" y="20" width="48" height="11" rx="3" fill="#3A86D8" />
           <rect x="29" y="20" width="6" height="34" fill={GOLD} />
           <path d="M32 20 C24 8 14 12 20 20 Z M32 20 C40 8 50 12 44 20 Z" fill="none" stroke={GOLD} strokeWidth="3.5" strokeLinejoin="round" />
         </svg>
@@ -39,7 +39,7 @@ export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: nu
         <svg {...common}>
           <path d="M14 26 C14 10 50 10 50 26" fill="none" stroke={COPPER} strokeWidth="4" strokeLinecap="round" />
           <rect x="10" y="28" width="44" height="26" rx="4" fill={COPPER} />
-          <rect x="8" y="22" width="48" height="9" rx="3" fill="#d99a62" />
+          <rect x="8" y="22" width="48" height="9" rx="3" fill="#CB9660" />
           <rect x="29" y="22" width="6" height="32" fill={GOLD} />
           <path d="M16 38 H26 M38 38 H48 M16 46 H26 M38 46 H48" stroke={INK} strokeOpacity=".25" strokeWidth="2.5" strokeLinecap="round" />
         </svg>

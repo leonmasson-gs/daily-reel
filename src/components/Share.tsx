@@ -56,14 +56,14 @@ export function ShareDialog({ data, onClose }: { data: ShareInput; onClose: () =
     <Modal title="Share your week" onClose={onClose}>
       <h2>Share your week</h2>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={cardPath} alt={`Your week card: ${data.tierName}, ${data.points} points`} style={{ width: "100%", borderRadius: 12, display: "block", margin: "12px 0", background: "#0f1718", aspectRatio: "1 / 1" }} />
+      <img src={cardPath} alt={`Your week card: ${data.tierName}, ${data.points} points`} style={{ width: "100%", borderRadius: 12, display: "block", margin: "12px 0", background: "#081A31", aspectRatio: "1 / 1" }} />
       <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "0 0 12px" }}>The card shows your tier, points and symbols. It never shows your email. Your invite link is added when you share.</p>
       {canShare && <button className="btn" onClick={share}>Share</button>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: canShare ? 10 : 0 }}>
         <button className="btn quiet" onClick={save}>Save image</button>
         <button className="btn quiet" onClick={copy}>Copy link</button>
       </div>
-      {status && <div className="small" role="status" style={{ marginTop: 10, color: "var(--sky)" }}>{status}</div>}
+      {status && <div className="small" role="status" style={{ marginTop: 10, color: "var(--carolina)" }}>{status}</div>}
       <button className="link" style={{ display: "block", margin: "12px auto 0" }} onClick={onClose}>Close</button>
     </Modal>
   );

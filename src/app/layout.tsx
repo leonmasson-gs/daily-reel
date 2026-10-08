@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Three free spins a day. Collect symbols, climb the weekly tier. Free to play, 18+.",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#172123" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0E2A4D" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

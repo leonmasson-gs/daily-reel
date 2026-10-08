@@ -260,5 +260,33 @@
       "Not available in every region. Local rules apply. Promoter details and full terms to be added."
     ],
     "sampleWinner": "Sample only. Week of 28 September, UK, Casino games: the player ending 4821 won a £100 gift voucher."
+  },
+  "responsible": {
+    "status": "Placeholder wording. Pending legal and responsible gambling review.",
+    "intro": "Daily Reel is free to play and for adults aged 18 or over. There is no stake, no purchase and no prize in this version.",
+    "limit": "You can take three spins a day. That limit is fixed and cannot be raised.",
+    "help": "If gambling is affecting you or someone you know, free and confidential support is available.",
+    "support": {
+      "UK": {
+        "name": "BeGambleAware",
+        "url": "https://www.begambleaware.org",
+        "line": "National Gambling Helpline: 0808 8020 133"
+      },
+      "IE": {
+        "name": "Support details for Ireland to be added by compliance",
+        "url": null,
+        "line": null
+      },
+      "US": {
+        "name": "National Council on Problem Gambling",
+        "url": "https://www.ncpgambling.org",
+        "line": "Call 1-800-GAMBLER"
+      },
+      "Other": {
+        "name": "Gambling Therapy",
+        "url": "https://www.gamblingtherapy.org",
+        "line": null
+      }
+    }
   }
 }

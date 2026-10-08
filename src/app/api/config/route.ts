@@ -10,6 +10,7 @@ export async function GET() {
     tiers: config.tiers,
     sets: config.sets,
     rewards: config.rewards,
+    responsible: config.responsible,
     partnerOffer: config.partnerOffer.enabled ? config.partnerOffer : null,
     odds: publishedOdds(),
   });

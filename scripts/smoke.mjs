@@ -146,6 +146,8 @@ expect("invite page title mentions the friend invite", html.includes("A friend i
     (await region("GB")) === "UK" && (await region("IE")) === "IE" && (await region("US")) === "US" && (await region("FR")) === "Other" && (await region(null)) === "Other");
   expect("config carries the rewards preview with sample prizes for every region",
     cfg.rewards?.draw?.prizes?.length === 4 && ["UK", "IE", "US", "Other"].every((r) => cfg.rewards.draw.prizes.every((p) => p.value[r]) && cfg.rewards.partner.offers[r]));
+  expect("config carries responsible gambling wording and support for every region",
+    typeof cfg.responsible?.status === "string" && ["UK", "IE", "US", "Other"].every((r) => cfg.responsible.support[r]?.name), cfg.responsible);
   const rp = new Client();
   await rp.call("/api/age-gate", "POST", { dob: ADULT });
   const rs = (await rp.call("/api/state")).json.player;

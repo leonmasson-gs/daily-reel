@@ -93,7 +93,7 @@ export function RewardsScreen({
           <h3 style={{ marginTop: 10 }}>{offer.headline}</h3>
           <p className="small" style={{ fontFamily: "var(--sans)", margin: "4px 0" }}><b>{rw.partner.sponsor}</b></p>
           <p className="small muted" style={{ fontFamily: "var(--sans)", margin: 0 }}>{offer.body}</p>
-          <div className="small" style={{ marginTop: 10, color: par.earned ? "var(--sky)" : "var(--muted)", fontWeight: 700 }}>
+          <div className="small" style={{ marginTop: 10, color: par.earned ? "var(--carolina)" : "var(--muted)", fontWeight: 700 }}>
             {par.earned ? "Unlocked in this preview" : `Locked until ${rw.partner.tier}`}
           </div>
         </div>
@@ -170,7 +170,7 @@ export function RewardsTeaser({
           {msg && <div className="err" role="alert">{msg}</div>}
         </div>
       )}
-      {emailSaved && notified && <p className="small" style={{ color: "var(--sky)", fontWeight: 700, margin: "0 0 10px" }}>Thanks. We will email you once if rewards go live.</p>}
+      {emailSaved && notified && <p className="small" style={{ color: "var(--carolina)", fontWeight: 700, margin: "0 0 10px" }}>Thanks. We will email you once if rewards go live.</p>}
 
       <button className="btn" onClick={onOpen}>See the rewards preview</button>
     </div>

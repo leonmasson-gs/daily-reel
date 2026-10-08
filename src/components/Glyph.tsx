@@ -1,11 +1,11 @@
 // Flat symbol artwork. Colour tells you the rarity: grey = common, sky = rare, gold = epic and legendary.
 export const RARITY_COLOR: Record<string, string> = {
-  Common: "#b4c4c6",
-  Rare: "#32cbf0",
-  Epic: "#e6b400",
-  Legendary: "#ffd200",
+  Common: "#B8B2A4",
+  Rare: "#4DA7FF",
+  Epic: "#C88A2E",
+  Legendary: "#E6AE55",
 };
-const INK = "#14201f";
+const INK = "#081A31";
 
 /** The drawing itself, without the <svg> wrapper, so it can also be used on the share card. */
 export function GlyphShapes({ id, c }: { id: string; c: string }) {

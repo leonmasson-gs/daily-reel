@@ -141,11 +141,11 @@ export default function AdminStats() {
       <div className="twocol">
         <div className="panel">
           <h3>Active players per day</h3>
-          <Bars values={stats.daily.map((d) => d.active)} labels={labels} color="var(--gold)" />
+          <Bars values={stats.daily.map((d) => d.active)} labels={labels} color="var(--mustard)" />
         </div>
         <div className="panel">
           <h3>New players per day</h3>
-          <Bars values={stats.daily.map((d) => d.joined)} labels={labels} color="var(--sky)" />
+          <Bars values={stats.daily.map((d) => d.joined)} labels={labels} color="var(--carolina)" />
         </div>
       </div>
 

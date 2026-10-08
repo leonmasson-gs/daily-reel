@@ -4,6 +4,7 @@ import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, u
 import { Glyph } from "./Glyph";
 import { Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
 import { ShareDialog } from "./Share";
+import { ResponsibleFooter, type ResponsibleCfg } from "./ResponsibleFooter";
 import { RewardsScreen, RewardsTeaser } from "./Rewards";
 import type { RewardsCfg } from "@/lib/rewards";
 import { KEYS, canVibrate, playSound, readFlag, vibrate, writeFlag, type SoundKind } from "@/lib/fx";
@@ -15,6 +16,7 @@ type Cfg = {
   tiers: { id: string; name: string; minPoints: number }[];
   sets: { id: string; name: string; symbols: string[]; points: number }[];
   rewards: RewardsCfg;
+  responsible: ResponsibleCfg;
   bonusSpinsPerWeekCap: number;
   partnerOffer: null | {
     sponsor: string; headline: string; body: string; cta: string; href: string; regions: string[]; disclosure: string;
@@ -211,9 +213,7 @@ export default function Game() {
         </>
       )}
 
-      <p className="muted small foot">
-        {cfg.copy.footer} <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer">BeGambleAware.org</a>
-      </p>
+      <ResponsibleFooter rg={cfg.responsible} region={region} />
 
       {sharing && player && (
         <ShareDialog
@@ -628,7 +628,7 @@ function Offer({ offer }: { offer: NonNullable<Cfg["partnerOffer"]> }) {
     <div className="offer">
       <span className="tag">Partner offer · Advertisement</span>
       <h3 style={{ marginTop: 10 }}>{offer.headline}</h3>
-      <p className="small muted" style={{ fontFamily: "var(--sans)" }}><b style={{ color: "var(--paper)" }}>{offer.sponsor}</b>. {offer.body}</p>
+      <p className="small muted" style={{ fontFamily: "var(--sans)" }}><b style={{ color: "var(--offwhite)" }}>{offer.sponsor}</b>. {offer.body}</p>
       <label className="field" htmlFor="region">Offers shown for</label>
       <select id="region" value={region} onChange={(e) => setRegion(e.target.value)}>
         {offer.regions.map((r) => <option key={r}>{r}</option>)}
