@@ -1,0 +1,117 @@
+{
+  "spinsPerDay": 3,
+  "bonusSpinsPerWeekCap": 2,
+  "minAge": 18,
+  "nearMiss": false,
+  "symbols": [
+    {
+      "id": "cherry",
+      "name": "Cherry",
+      "icon": "🍒",
+      "rarity": "Common",
+      "weight": 24,
+      "points": 1
+    },
+    {
+      "id": "bell",
+      "name": "Bell",
+      "icon": "🔔",
+      "rarity": "Common",
+      "weight": 20,
+      "points": 1
+    },
+    {
+      "id": "lemon",
+      "name": "Lemon",
+      "icon": "🍋",
+      "rarity": "Common",
+      "weight": 16,
+      "points": 2
+    },
+    {
+      "id": "clover",
+      "name": "Clover",
+      "icon": "🍀",
+      "rarity": "Rare",
+      "weight": 14,
+      "points": 3
+    },
+    {
+      "id": "star",
+      "name": "Star",
+      "icon": "⭐",
+      "rarity": "Rare",
+      "weight": 12,
+      "points": 4
+    },
+    {
+      "id": "gem",
+      "name": "Gem",
+      "icon": "💎",
+      "rarity": "Epic",
+      "weight": 8,
+      "points": 8
+    },
+    {
+      "id": "crown",
+      "name": "Crown",
+      "icon": "👑",
+      "rarity": "Epic",
+      "weight": 5,
+      "points": 15
+    },
+    {
+      "id": "golden-reel",
+      "name": "Golden Reel",
+      "icon": "🎰",
+      "rarity": "Legendary",
+      "weight": 1,
+      "points": 40
+    }
+  ],
+  "multipliers": {
+    "pair": 2,
+    "triple": 5
+  },
+  "tiers": [
+    {
+      "id": "bronze",
+      "name": "Bronze",
+      "minPoints": 0
+    },
+    {
+      "id": "silver",
+      "name": "Silver",
+      "minPoints": 120
+    },
+    {
+      "id": "gold",
+      "name": "Gold",
+      "minPoints": 240
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum",
+      "minPoints": 340
+    }
+  ],
+  "partnerOffer": {
+    "enabled": true,
+    "sponsor": "Example Sports (fictional partner)",
+    "headline": "Welcome offer from our partner",
+    "body": "Placeholder offer for the prototype. Not a real operator or offer.",
+    "cta": "See offer",
+    "href": "https://example.com/partner-offer",
+    "regions": [
+      "UK",
+      "IE",
+      "Other"
+    ],
+    "disclosure": "Advertisement. 18+. T&Cs apply. BeGambleAware.org"
+  },
+  "copy": {
+    "title": "Daily Reel",
+    "tagline": "Three free spins a day. Collect symbols, climb the weekly tier.",
+    "footer": "Free to play. No stake, no purchase, no prizes. 18+ only."
+  }
+}
