@@ -4,15 +4,40 @@ import { useEffect, useRef, useState } from "react";
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
+  // The parent passes a new onClose on every render. Keeping it in a ref means the focus handling below runs once,
+  // when the dialog opens, instead of stealing focus back to the first button every time the page re-renders.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    box.current?.querySelector<HTMLElement>("button, a, input")?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const focusables = () =>
+      Array.from(box.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])') ?? [])
+        .filter((el) => el.getClientRects().length > 0);
+    focusables()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { closeRef.current(); return; }
+      if (e.key !== "Tab") return;
+      // Keep Tab and Shift+Tab inside the dialog so nobody lands on the page hiding behind it.
+      const items = focusables();
+      if (items.length === 0) { e.preventDefault(); return; }
+      const first = items[0], last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (!box.current?.contains(active)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); prev?.focus?.(); };
-  }, [onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      // Give focus back to where it was. If that control has gone, land on the Spin button or the title instead of the top of the page.
+      requestAnimationFrame(() => {
+        if (prev && prev !== document.body && document.contains(prev)) prev.focus();
+        else (document.querySelector<HTMLElement>(".machine .btn:not(:disabled)") ?? document.querySelector<HTMLElement>(".brandbtn"))?.focus();
+      });
+    };
+  }, []);
   return (
-    <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) closeRef.current(); }}>
       <div className="dialog" role="dialog" aria-modal="true" aria-label={title} ref={box}>{children}</div>
     </div>
   );

@@ -16,6 +16,7 @@ export function ResponsibleFooter({ rg, region }: { rg: ResponsibleCfg; region: 
         {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a> : <span>{s.name}</span>}
         {s.line && <span>. {s.line}</span>}
       </p>
+      <p className="rg-links"><a href="/privacy">Privacy notice</a></p>
       <p className="rg-status">{rg.status}</p>
     </footer>
   );

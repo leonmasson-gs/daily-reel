@@ -67,9 +67,32 @@ export default function Game() {
     return (await r.json().catch(() => ({}))).message ?? "Could not save that. Try again.";
   }
 
-  const refresh = useCallback(async () => {
-    const r = await fetch("/api/state").then((x) => x.json());
-    setPlayer(r.player);
+  const [loadError, setLoadError] = useState(false);
+
+  /** Re-reads the player. Returns whether there is one, so the age check can tell if the cookie really stuck. */
+  const refresh = useCallback(async (): Promise<boolean> => {
+    try {
+      const r = await fetch("/api/state");
+      if (!r.ok) throw new Error("state");
+      const j = await r.json();
+      setPlayer(j.player);
+      return Boolean(j.player);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /** First load: settings and player together. If either fails, say so and offer a retry instead of loading forever. */
+  const load = useCallback(async () => {
+    setLoadError(false);
+    try {
+      const get = async (url: string) => { const r = await fetch(url); if (!r.ok) throw new Error(url); return r.json(); };
+      const [c, s] = await Promise.all([get("/api/config"), get("/api/state")]);
+      setCfg(c);
+      setPlayer(s.player);
+    } catch {
+      setLoadError(true);
+    }
   }, []);
 
   // Each screen gets its own history entry (#rewards, #tier, ...) so the Back button and shared links work.
@@ -91,8 +114,7 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/config").then((r) => r.json()).then(setCfg);
-    refresh();
+    load();
     setSound(readFlag(KEYS.sound, false));
     setHaptics(readFlag(KEYS.haptics, true));
     setVibrates(canVibrate());
@@ -101,7 +123,7 @@ export default function Game() {
       try { saved = window.localStorage.getItem("dr_region"); } catch { /* ignore */ }
       setRegionState(saved ?? j.region ?? "Other");
     }).catch(() => {});
-  }, [refresh]);
+  }, [load]);
 
   // First-run intro for new players, otherwise last week's recap if there is one.
   const hasPlayer = Boolean(player);
@@ -135,7 +157,18 @@ export default function Game() {
     fetch("/api/recap", { method: "POST" }).catch(() => {});
   }
 
-  if (!cfg || player === undefined) return <main className="app"><p className="muted small">Loading…</p></main>;
+  if (loadError && (!cfg || player === undefined)) {
+    return (
+      <main className="app">
+        <div className="panel" role="alert">
+          <h2>We could not load the game</h2>
+          <p>Check your connection, then try again.</p>
+          <button className="btn" onClick={load}>Try again</button>
+        </div>
+      </main>
+    );
+  }
+  if (!cfg || player === undefined) return <main className="app"><p className="muted small" role="status">Loading…</p></main>;
 
   const tabs: { k: Tab; label: string; icon: React.ReactNode }[] = [
     { k: "play", label: "Play", icon: <path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4 4v8m3-8v8m3-8v8" /> },
@@ -245,11 +278,14 @@ function tierPct(p: Player) {
 
 /* ------------------------------------------------------------------ */
 
-function AgeGate({ cfg, onDone }: { cfg: Cfg; onDone: () => void }) {
+function AgeGate({ cfg, onDone }: { cfg: Cfg; onDone: () => Promise<boolean> }) {
   const [dob, setDob] = useState("");
   const [err, setErr] = useState("");
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [invited, setInvited] = useState(false);
+  useEffect(() => { setInvited(Boolean(new URLSearchParams(window.location.search).get("ref"))); }, []);
+  const oldest = new Date(Date.now() - 120 * 365.25 * 864e5).toISOString().slice(0, 10);
 
   async function submit() {
     setBusy(true); setErr("");
@@ -257,7 +293,11 @@ function AgeGate({ cfg, onDone }: { cfg: Cfg; onDone: () => void }) {
     const r = await fetch("/api/age-gate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dob, ref }) });
     const j = await r.json();
     setBusy(false);
-    if (r.ok) { onDone(); return; }
+    if (r.ok) {
+      const stuck = !(await onDone());
+      if (stuck) setErr("This game needs cookies to remember your age check. Turn cookies on for this site, then try again.");
+      return;
+    }
     if (j.error === "under_age") setBlocked(true);
     setErr(j.message ?? "Something went wrong.");
   }
@@ -274,10 +314,11 @@ function AgeGate({ cfg, onDone }: { cfg: Cfg; onDone: () => void }) {
   return (
     <div className="panel">
       <h2>Confirm your age</h2>
+      {invited && <p className="invite-note"><b>A friend invited you.</b> You get your own three free spins a day.</p>}
       <p>{cfg.copy.tagline}</p>
       <p className="muted">You must be {cfg.minAge} or over. We check your date of birth and do not store it.</p>
       <label className="field" htmlFor="dob">Date of birth</label>
-      <input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().slice(0, 10)} />
+      <input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} min={oldest} max={new Date().toISOString().slice(0, 10)} />
       {err && <div className="err" role="alert">{err}</div>}
       <div style={{ height: 14 }} />
       <button className="btn" disabled={!dob || busy} onClick={submit}>Continue</button>
@@ -356,7 +397,7 @@ function Reel({ ref, cfg, initial, hit, settle }: { ref: Ref<ReelHandle>; cfg: C
 
   const first = byId.get(mode.strip[0]);
   return (
-    <div ref={winEl} className={"reel-win" + (hit ? " hit" : "") + (settle ? " settle" : "")} aria-label={first?.name}>
+    <div ref={winEl} className={"reel-win" + (hit ? " hit" : "") + (settle ? " settle" : "")} role="img" aria-label={first?.name}>
       <div ref={stripEl} className="strip">
         {mode.strip.map((id, i) => {
           const s = byId.get(id);
@@ -545,9 +586,9 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
           )}
         </div>
 
-        <div className="pips" aria-label={`${left} spins left today`}>
-          {Array.from({ length: player.spins.perDay }, (_, i) => <span key={i} className={"pip" + (i >= baseUsed ? " on" : "")} />)}
-          {Array.from({ length: bonusLeft }, (_, i) => <span key={"b" + i} className="pip bonus on" />)}
+        <div className="pips">
+          {Array.from({ length: player.spins.perDay }, (_, i) => <span key={i} aria-hidden className={"pip" + (i >= baseUsed ? " on" : "")} />)}
+          {Array.from({ length: bonusLeft }, (_, i) => <span key={"b" + i} aria-hidden className="pip bonus on" />)}
           <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : "All spins used"}</span>
         </div>
 
@@ -590,7 +631,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
           emailSaved={player.emailSaved} notified={player.rewardsNotify} onOpen={onOpenRewards} onNotify={onNotify}
         />
       )}
-      {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} />}
+      {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} region={region} />}
     </>
   );
 }
@@ -608,7 +649,8 @@ function EmailCard({ onSaved }: { onSaved: () => void }) {
   return (
     <div className="panel">
       <h3>Keep your collection</h3>
-      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Save your symbols to an email address and get a reminder when your daily spins are ready.</p>
+      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Save your symbols to an email address and get a reminder when your daily spins are ready. We use your email only for the reminder you tick below.</p>
+      <a className="linkrow" href="/privacy">How we use your data</a>
       <label className="field" htmlFor="em">Email address</label>
       <input id="em" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
       <label className="check">
@@ -621,18 +663,13 @@ function EmailCard({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-function Offer({ offer }: { offer: NonNullable<Cfg["partnerOffer"]> }) {
-  const [region, setRegion] = useState(offer.regions[0]);
+function Offer({ offer, region }: { offer: NonNullable<Cfg["partnerOffer"]>; region: string }) {
   useEffect(() => { track("offer_viewed"); }, []);
   return (
     <div className="offer">
       <span className="tag">Partner offer · Advertisement</span>
       <h3 style={{ marginTop: 10 }}>{offer.headline}</h3>
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}><b style={{ color: "var(--offwhite)" }}>{offer.sponsor}</b>. {offer.body}</p>
-      <label className="field" htmlFor="region">Offers shown for</label>
-      <select id="region" value={region} onChange={(e) => setRegion(e.target.value)}>
-        {offer.regions.map((r) => <option key={r}>{r}</option>)}
-      </select>
       <div style={{ height: 12 }} />
       <a className="btn quiet" href={offer.href} target="_blank" rel="sponsored noopener noreferrer" onClick={() => track("offer_clicked", { region })}>{offer.cta}</a>
       <p className="small muted" style={{ fontFamily: "var(--sans)", marginBottom: 0 }}>{offer.disclosure}</p>

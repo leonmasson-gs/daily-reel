@@ -38,6 +38,8 @@ eq("tier at 9999 has no next", tierFor(9999).next, null);
 eq("age 17y364d is under 18", (ageOn("2008-10-09", new Date("2026-10-08T12:00:00Z")) ?? 99) < 18, true);
 eq("age on 18th birthday is 18", ageOn("2008-10-08", new Date("2026-10-08T12:00:00Z")), 18);
 eq("bad dob rejected", ageOn("2026-02-31"), null);
+eq("an age over 120 is rejected as a typing mistake", ageOn("1900-01-01"), null);
+eq("an age of exactly 100 is accepted", ageOn("1926-10-01", new Date("2026-10-08T12:00:00Z")), 100);
 eq("week starts Monday", utcWeekStart(new Date("2026-10-08T12:00:00Z")), "2026-10-05");
 eq("Sunday belongs to the previous Monday", utcWeekStart(new Date("2026-10-11T23:59:00Z")), "2026-10-05");
 process.exit(ok ? 0 : 1);

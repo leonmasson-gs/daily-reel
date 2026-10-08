@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { ready, logEvent } from "@/lib/db";
 import { currentPlayerId } from "@/lib/session";
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Letters, digits and the usual . _ % + - ' in the local part. No angle brackets, quotes or spaces.
+const EMAIL = /^[A-Za-z0-9._%+'-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
 
 export async function POST(req: Request) {
   const playerId = await currentPlayerId();

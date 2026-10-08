@@ -159,6 +159,21 @@ expect("invite page title mentions the friend invite", html.includes("A friend i
   expect("rewards opt-in refuses a visitor without an age check (401)", (await new Client().call("/api/rewards/notify", "POST")).status === 401);
 }
 
+// fixes from the persona test
+{
+  const priv = await fetch(BASE + "/privacy");
+  const ptxt = await priv.text();
+  expect("the privacy notice page loads and is marked as placeholder wording", priv.status === 200 && /Placeholder wording/.test(ptxt) && /dr_pid/.test(ptxt), priv.status);
+  const hh = (await fetch(BASE + "/")).headers;
+  expect("security headers are set (nosniff, frame deny, referrer policy)", hh.get("x-content-type-options") === "nosniff" && hh.get("x-frame-options") === "DENY" && !!hh.get("referrer-policy"));
+  expect("the server no longer names its framework", !hh.get("x-powered-by"), hh.get("x-powered-by"));
+  expect("an age of 126 is refused (400)", (await new Client().call("/api/age-gate", "POST", { dob: "1900-01-01" })).status === 400);
+  const ec = new Client(); await ec.call("/api/age-gate", "POST", { dob: ADULT });
+  expect("an email made of HTML is refused (400)", (await ec.call("/api/email", "POST", { email: "\"><script>alert(1)</script>@x.co", consent: true })).status === 400);
+  expect("a normal email with an apostrophe is accepted", (await ec.call("/api/email", "POST", { email: "o'brien@example.org", consent: true })).status === 200);
+  expect("events from a visitor with no player are ignored but answered 200", (await new Client().call("/api/event", "POST", { name: "tier_viewed" })).status === 200);
+}
+
 // admin stats are locked
 const nobody = new Client();
 expect("stats are refused without signing in (401)", (await nobody.call("/api/admin/stats")).status === 401);
@@ -169,6 +184,11 @@ if (process.env.ADMIN_KEY) {
   expect("a player's cookie does not open the stats", (await inviter.call("/api/admin/stats")).status === 401);
   const good = await admin.call("/api/admin/login", "POST", { key: process.env.ADMIN_KEY });
   expect("correct admin key signs in", good.status === 200 && !!admin.cookie, good.status);
+  const sharesBefore = (await admin.call("/api/admin/stats")).json.answers.friends.shares;
+  const flooder = new Client(); await flooder.call("/api/age-gate", "POST", { dob: ADULT });
+  for (let i = 0; i < 40; i++) await flooder.call("/api/event", "POST", { name: "share_card" });
+  const sharesAfter = (await admin.call("/api/admin/stats")).json.answers.friends.shares;
+  expect("one player repeating an event 40 times is counted at most 6 times", sharesAfter - sharesBefore <= 6 && sharesAfter - sharesBefore >= 1, sharesAfter - sharesBefore);
   const st2 = await admin.call("/api/admin/stats");
   expect("stats return the five answers", st2.status === 200 && ["enjoyable", "comeBack", "email", "friends", "monetise"].every((k) => k in st2.json.answers), Object.keys(st2.json.answers ?? {}));
   const blob = JSON.stringify(st2.json);

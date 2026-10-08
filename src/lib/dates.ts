@@ -25,5 +25,6 @@ export function ageOn(dob: string, today = new Date()): number | null {
   const hadBirthday =
     today.getUTCMonth() > m - 1 || (today.getUTCMonth() === m - 1 && today.getUTCDate() >= d);
   if (!hadBirthday) age -= 1;
+  if (age > 120) return null; // not a real age: treat as a typing mistake
   return age;
 }
