@@ -116,5 +116,51 @@ expect("unknown client event is refused", (await inviter.call("/api/event", "POS
 expect("intro events are accepted", (await inviter.call("/api/event", "POST", { name: "intro_completed" })).status === 200);
 expect("known client event is accepted", (await inviter.call("/api/event", "POST", { name: "tier_viewed" })).status === 200);
 
+// share + tracking events
+expect("offer_viewed and share_card events are accepted",
+  (await inviter.call("/api/event", "POST", { name: "offer_viewed" })).status === 200 &&
+  (await inviter.call("/api/event", "POST", { name: "share_card" })).status === 200);
+
+// share cards
+for (const [label, path, w, h] of [
+  ["week card", "/api/card?kind=week&tier=Silver&pts=131&days=3&found=cherry,bell,lemon", 1080, 1080],
+  ["invite card", "/api/card?kind=invite", 1200, 630],
+  ["card ignores junk input safely", "/api/card?kind=week&tier=%3Cscript%3E&pts=99999999999&days=999&found=evil", 1080, 1080],
+]) {
+  const res = await fetch(BASE + path);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const isPng = buf.slice(0, 8).toString("hex") === "89504e470d0a1a0a";
+  const width = buf.readUInt32BE(16), height = buf.readUInt32BE(20);
+  expect(`${label} is a ${w}x${h} PNG`, res.status === 200 && isPng && width === w && height === h, [res.status, width, height]);
+}
+
+// link preview for invited visitors
+const html = await (await fetch(BASE + "/?ref=abc123")).text();
+expect("invite page carries a link-preview image tag", /property="og:image"[^>]*\/api\/card\?kind=invite/.test(html) || /\/api\/card\?kind=invite[^>]*property="og:image"/.test(html), html.slice(0, 200));
+expect("invite page title mentions the friend invite", html.includes("A friend invited you to Daily Reel"));
+
+// admin stats are locked
+const nobody = new Client();
+expect("stats are refused without signing in (401)", (await nobody.call("/api/admin/stats")).status === 401);
+if (process.env.ADMIN_KEY) {
+  const admin = new Client();
+  const bad = await admin.call("/api/admin/login", "POST", { key: "not-the-key" });
+  expect("wrong admin key is refused and sets no cookie", bad.status === 401 && !admin.cookie, bad.status);
+  expect("a player's cookie does not open the stats", (await inviter.call("/api/admin/stats")).status === 401);
+  const good = await admin.call("/api/admin/login", "POST", { key: process.env.ADMIN_KEY });
+  expect("correct admin key signs in", good.status === 200 && !!admin.cookie, good.status);
+  const st2 = await admin.call("/api/admin/stats");
+  expect("stats return the five answers", st2.status === 200 && ["enjoyable", "comeBack", "email", "friends", "monetise"].every((k) => k in st2.json.answers), Object.keys(st2.json.answers ?? {}));
+  const blob = JSON.stringify(st2.json);
+  expect("stats contain no email addresses or player cookies", !blob.includes("example.com") && !blob.includes("@") && !blob.includes("dr_pid"));
+  expect("stats counted the emails captured above", st2.json.answers.email.captured >= 1);
+  const forged = new Client(); forged.cookie = "dr_admin=" + Date.now() + ".AAAA";
+  expect("a forged admin cookie is refused", (await forged.call("/api/admin/stats")).status === 401);
+  await admin.call("/api/admin/logout", "POST");
+  expect("signing out closes access", (await admin.call("/api/admin/stats")).status === 401);
+} else {
+  console.log("SKIP admin sign-in checks (set ADMIN_KEY to run them)");
+}
+
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nAll checks passed");
 process.exit(failed ? 1 : 0);

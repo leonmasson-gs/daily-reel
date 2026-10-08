@@ -21,6 +21,7 @@ export async function POST(req: Request) {
   }
   // The date of birth is checked and then discarded. We never store it.
   if (age < config.minAge) {
+    await logEvent(null, "age_gate_blocked"); // counted only, no identity kept
     return NextResponse.json(
       { error: "under_age", message: `You must be ${config.minAge} or over to play.` },
       { status: 403 },

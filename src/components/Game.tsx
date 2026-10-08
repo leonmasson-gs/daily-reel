@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { Glyph } from "./Glyph";
 import { Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
+import { ShareDialog } from "./Share";
 import { KEYS, canVibrate, playSound, readFlag, vibrate, writeFlag, type SoundKind } from "@/lib/fx";
 
 type Sym = { id: string; name: string; icon: string; rarity: string; points: number; chancePerReel: number };
@@ -47,6 +48,7 @@ export default function Game() {
   const [intro, setIntro] = useState(false);
   const [recap, setRecap] = useState<RecapData | null>(null);
   const [tierUp, setTierUp] = useState<{ from: string; to: string } | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const refresh = useCallback(async () => {
     const r = await fetch("/api/state").then((x) => x.json());
@@ -138,9 +140,9 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} />}
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
-          {tab === "tier" && <Tier cfg={cfg} player={player} />}
+          {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
           {tab === "invite" && <Invite cfg={cfg} player={player} />}
 
           <nav className="nav" aria-label="Main"><div className="in">
@@ -158,6 +160,18 @@ export default function Game() {
         {cfg.copy.footer} <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer">BeGambleAware.org</a>
       </p>
 
+      {sharing && player && (
+        <ShareDialog
+          onClose={() => setSharing(false)}
+          data={{
+            inviteCode: player.inviteCode,
+            tierName: player.week.tier.name,
+            points: player.week.points,
+            daysPlayed: player.week.daysPlayed.length,
+            found: cfg.odds.symbols.filter((x) => (player.collection[x.id] ?? 0) > 0).map((x) => x.id),
+          }}
+        />
+      )}
       {intro && <Intro onDone={() => closeIntro(false)} onSkip={() => closeIntro(true)} />}
       {!intro && recap && <RecapDialog recap={recap} onClose={closeRecap} />}
       {!intro && !recap && tierUp && player && (
@@ -367,8 +381,8 @@ function WeekStrip({ week }: { week: Player["week"] }) {
 
 type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
-function Play({ cfg, player, setPlayer, refresh, feel, onTierUp }: {
-  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void;
+function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare }: {
+  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void;
 }) {
   const last = player.today.at(-1);
   const start = last ? last.symbols : ["cherry", "lemon", "star"];
@@ -490,9 +504,12 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp }: {
       <WeekStrip week={player.week} />
 
       <div className="section" style={{ paddingBottom: 6 }}>
-        <button className="link" onClick={() => { setShowOdds(!showOdds); if (!showOdds) track("odds_viewed"); }} aria-expanded={showOdds}>
-          {showOdds ? "Hide the odds" : "See the odds"}
-        </button>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <button className="link" onClick={() => { setShowOdds(!showOdds); if (!showOdds) track("odds_viewed"); }} aria-expanded={showOdds}>
+            {showOdds ? "Hide the odds" : "See the odds"}
+          </button>
+          <button className="link" onClick={onShare}>Share my week</button>
+        </div>
         {showOdds && (
           <div>
             <table className="odds">
@@ -544,6 +561,7 @@ function EmailCard({ onSaved }: { onSaved: () => void }) {
 
 function Offer({ offer }: { offer: NonNullable<Cfg["partnerOffer"]> }) {
   const [region, setRegion] = useState(offer.regions[0]);
+  useEffect(() => { track("offer_viewed"); }, []);
   return (
     <div className="offer">
       <span className="tag">Partner offer · Advertisement</span>
@@ -607,7 +625,7 @@ function Collection({ cfg, player }: { cfg: Cfg; player: Player }) {
   );
 }
 
-function Tier({ cfg, player }: { cfg: Cfg; player: Player }) {
+function Tier({ cfg, player, onShare }: { cfg: Cfg; player: Player; onShare: () => void }) {
   const { week } = player;
   return (
     <div className="section">
@@ -628,6 +646,7 @@ function Tier({ cfg, player }: { cfg: Cfg; player: Player }) {
           );
         })}
       </ul>
+      <button className="btn quiet" style={{ marginTop: 16 }} onClick={onShare}>Share my week</button>
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Tiers start again every Monday. Missing a day never removes points you have already earned.</p>
     </div>
   );

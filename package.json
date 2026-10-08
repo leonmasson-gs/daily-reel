@@ -8,7 +8,8 @@
     "start": "next start",
     "verify:engine": "tsx scripts/verify-engine.ts",
     "verify:smoke": "node scripts/smoke.mjs",
-    "verify:game": "tsx scripts/verify-game.mts"
+    "verify:game": "tsx scripts/verify-game.mts",
+    "verify:stats": "tsx scripts/verify-stats.mts"
   },
   "dependencies": {
     "next": "^16.4.0",
