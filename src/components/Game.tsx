@@ -4,6 +4,8 @@ import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, u
 import { Glyph } from "./Glyph";
 import { Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
 import { ShareDialog } from "./Share";
+import { RewardsScreen, RewardsTeaser } from "./Rewards";
+import type { RewardsCfg } from "@/lib/rewards";
 import { KEYS, canVibrate, playSound, readFlag, vibrate, writeFlag, type SoundKind } from "@/lib/fx";
 
 type Sym = { id: string; name: string; icon: string; rarity: string; points: number; chancePerReel: number };
@@ -12,6 +14,7 @@ type Cfg = {
   minAge: number;
   tiers: { id: string; name: string; minPoints: number }[];
   sets: { id: string; name: string; symbols: string[]; points: number }[];
+  rewards: RewardsCfg;
   bonusSpinsPerWeekCap: number;
   partnerOffer: null | {
     sponsor: string; headline: string; body: string; cta: string; href: string; regions: string[]; disclosure: string;
@@ -21,13 +24,15 @@ type Cfg = {
 type Player = {
   inviteCode: string;
   emailSaved: boolean;
+  rewardsNotify: boolean;
+  rewards: { weeksRegular: number; weeksFull: number };
   spins: { perDay: number; remaining: number; baseRemaining: number; bonusRemaining: number; bonusCapPerWeek: number; resetsAt: string };
   today: { symbols: string[]; outcome: string; points: number; is_bonus: boolean }[];
   collection: Record<string, number>;
   sets: { id: string; name: string; symbols: string[]; points: number; found: number; total: number; complete: boolean }[];
   week: { start: string; today: string; daysPlayed: string[]; points: number; tier: { id: string; name: string; minPoints: number }; nextTier: { name: string; minPoints: number } | null; pointsToNext: number };
 };
-type Tab = "play" | "collection" | "tier" | "invite";
+type Tab = "play" | "collection" | "tier" | "invite" | "rewards";
 type SpinResult = { symbols: string[]; outcome: "triple" | "pair" | "none"; points: number; isBonus: boolean };
 
 const pct = (n: number) => (n * 100 < 1 ? (n * 100).toFixed(2) : (n * 100).toFixed(1)) + "%";
@@ -49,6 +54,16 @@ export default function Game() {
   const [recap, setRecap] = useState<RecapData | null>(null);
   const [tierUp, setTierUp] = useState<{ from: string; to: string } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [region, setRegionState] = useState("Other");
+  function setRegion(r: string) {
+    setRegionState(r);
+    try { window.localStorage.setItem("dr_region", r); } catch { /* not saved */ }
+  }
+  async function notifyRewards(): Promise<string | null> {
+    const r = await fetch("/api/rewards/notify", { method: "POST" });
+    if (r.ok) { setPlayer((p) => (p ? { ...p, rewardsNotify: true } : p)); return null; }
+    return (await r.json().catch(() => ({}))).message ?? "Could not save that. Try again.";
+  }
 
   const refresh = useCallback(async () => {
     const r = await fetch("/api/state").then((x) => x.json());
@@ -61,6 +76,11 @@ export default function Game() {
     setSound(readFlag(KEYS.sound, false));
     setHaptics(readFlag(KEYS.haptics, true));
     setVibrates(canVibrate());
+    fetch("/api/region").then((r) => r.json()).then((j) => {
+      let saved: string | null = null;
+      try { saved = window.localStorage.getItem("dr_region"); } catch { /* ignore */ }
+      setRegionState(saved ?? j.region ?? "Other");
+    }).catch(() => {});
   }, [refresh]);
 
   // First-run intro for new players, otherwise last week's recap if there is one.
@@ -100,7 +120,8 @@ export default function Game() {
   const tabs: { k: Tab; label: string; icon: React.ReactNode }[] = [
     { k: "play", label: "Play", icon: <path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4 4v8m3-8v8m3-8v8" /> },
     { k: "collection", label: "Collection", icon: <path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z" /> },
-    { k: "tier", label: "Weekly tier", icon: <path d="M4 20V13m5 7V9m5 11V5m5 15V11" /> },
+    { k: "tier", label: "Tier", icon: <path d="M4 20V13m5 7V9m5 11V5m5 15V11" /> },
+    { k: "rewards", label: "Rewards", icon: <path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7C10 3 6 3 7 6c.4 1.2 2.6 1.2 5 1zm0 0c2-4 6-4 5-1-.4 1.2-2.6 1.2-5 1z" /> },
     { k: "invite", label: "Invite", icon: <path d="M12 3v4m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 14a7 7 0 0 1 14 0" /> },
   ];
 
@@ -140,10 +161,16 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} region={region} onOpenRewards={() => setTab("rewards")} onNotify={notifyRewards} />}
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
           {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
           {tab === "invite" && <Invite cfg={cfg} player={player} />}
+          {tab === "rewards" && (
+            <RewardsScreen
+              rw={cfg.rewards} region={region} setRegion={setRegion} daysPlayed={player.week.daysPlayed.length} points={player.week.points}
+              tiers={cfg.tiers} tierName={player.week.tier.name} weeks={player.rewards}
+            />
+          )}
 
           <nav className="nav" aria-label="Main"><div className="in">
             {tabs.map((t) => (
@@ -381,8 +408,9 @@ function WeekStrip({ week }: { week: Player["week"] }) {
 
 type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
-function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare }: {
+function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region, onOpenRewards, onNotify }: {
   cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void;
+  region: string; onOpenRewards: () => void; onNotify: () => Promise<string | null>;
 }) {
   const last = player.today.at(-1);
   const start = last ? last.symbols : ["cherry", "lemon", "star"];
@@ -528,6 +556,12 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare }: {
       </div>
 
       {(fresh || left === 0) && !player.emailSaved && <EmailCard onSaved={() => setPlayer({ ...player, emailSaved: true })} />}
+      {(left === 0 || player.emailSaved) && (
+        <RewardsTeaser
+          rw={cfg.rewards} region={region} daysPlayed={player.week.daysPlayed.length} points={player.week.points} tiers={cfg.tiers}
+          emailSaved={player.emailSaved} notified={player.rewardsNotify} onOpen={onOpenRewards} onNotify={onNotify}
+        />
+      )}
       {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} />}
     </>
   );

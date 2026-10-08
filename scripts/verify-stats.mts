@@ -35,6 +35,15 @@ for (const [name, times] of [["invite_copied", 2], ["offer_viewed", 4], ["age_ga
   for (let i = 0; i < times; i++) await logEvent(null, name);
 await logEvent(null, "offer_clicked", { region: "UK" });
 
+await logEvent(A, "rewards_viewed", { region: "UK" });
+await logEvent(A, "rewards_viewed", { region: "UK" });     // same player twice
+await logEvent(B, "rewards_viewed", { region: "IE" });
+await logEvent(A, "reward_interest", { rung: "draw", region: "UK" });
+await logEvent(A, "reward_interest", { rung: "draw", region: "UK" }); // repeat tap
+await logEvent(B, "reward_interest", { rung: "draw", region: "IE" });
+await logEvent(B, "reward_interest", { rung: "regular", region: "IE" });
+await db.query("update players set rewards_notify = true where id = $1", [B]);
+
 const s = await getStats(db.query);
 ok("counts players, spinners and spins", s.totals.players === 3 && s.totals.spinners === 2 && s.totals.totalSpins === 5, s.totals);
 ok("spins today counts only today", s.totals.spinsToday === 1, s.totals);
@@ -52,6 +61,9 @@ ok("tier split covers this week's players only", s.progress.tiersThisWeek.reduce
 ok("fairness: observed pair and triple rates", near(s.fairness.pair.observed, 0.2) && near(s.fairness.triple.observed, 0.2), s.fairness);
 ok("fairness: published odds shown alongside", s.fairness.reels.length === 8 && s.fairness.reels.every((r) => r.published > 0));
 ok("guardrails: blocked under-18 attempts are counted", s.guardrails.ageBlocked === 1, s.guardrails);
+ok("rewards: viewers counted once per player", s.rewards.viewers === 2, s.rewards);
+ok("rewards: interest counts distinct players per rung", s.rewards.interest.find((r) => r.rung === "draw")?.players === 2 && s.rewards.interest.find((r) => r.rung === "regular")?.players === 1 && s.rewards.interest.find((r) => r.rung === "partner")?.players === 0, s.rewards.interest);
+ok("rewards: viewers split by region and opt-ins counted", s.rewards.viewersByRegion.length === 2 && s.rewards.notifyOptIns === 1, s.rewards);
 const json = JSON.stringify(s);
 ok("no email address or player id leaks into the stats", !json.includes("@") && !json.includes(A) && !json.includes(B));
 

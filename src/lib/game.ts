@@ -57,8 +57,8 @@ export async function buildState(playerId: string) {
   const q = db.query;
   const week = utcWeekStart();
 
-  const [player] = await q<{ invite_code: string; email: string | null }>(
-    "select invite_code, email from players where id = $1",
+  const [player] = await q<{ invite_code: string; email: string | null; rewards_notify: boolean }>(
+    "select invite_code, email, rewards_notify from players where id = $1",
     [playerId],
   );
   if (!player) return null;
@@ -83,10 +83,17 @@ export async function buildState(playerId: string) {
   const awarded = new Set(awards.map((r) => r.set_id));
   const owned = new Set(collectionRows.map((r) => r.symbol));
   const { current, next } = tierFor(points);
+  const [weeks] = await q<{ regular: number; full: number }>(
+    `select count(*) filter (where d >= $2)::int as regular, count(*) filter (where d >= $3)::int as full
+       from (select count(distinct play_date) as d from spins where player_id = $1 group by week_start) t`,
+    [playerId, config.rewards.regular.daysNeeded, config.rewards.regular.fullWeekDays],
+  );
 
   return {
     inviteCode: player.invite_code,
     emailSaved: Boolean(player.email),
+    rewardsNotify: player.rewards_notify,
+    rewards: { weeksRegular: weeks.regular, weeksFull: weeks.full },
     spins: {
       perDay: config.spinsPerDay,
       remaining: a.remaining,

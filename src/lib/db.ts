@@ -69,6 +69,7 @@ create table if not exists players (
   created_at timestamptz not null default now()
 );
 alter table players add column if not exists recap_seen_week text;
+alter table players add column if not exists rewards_notify boolean not null default false;
 create table if not exists spins (
   id bigserial primary key,
   player_id uuid not null references players(id),

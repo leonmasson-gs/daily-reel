@@ -139,6 +139,24 @@ const html = await (await fetch(BASE + "/?ref=abc123")).text();
 expect("invite page carries a link-preview image tag", /property="og:image"[^>]*\/api\/card\?kind=invite/.test(html) || /\/api\/card\?kind=invite[^>]*property="og:image"/.test(html), html.slice(0, 200));
 expect("invite page title mentions the friend invite", html.includes("A friend invited you to Daily Reel"));
 
+// rewards preview
+{
+  const region = async (c) => (await (await fetch(BASE + "/api/region", { headers: c ? { "x-vercel-ip-country": c } : {} })).json()).region;
+  expect("region: GB maps to UK, IE to IE, US to US, others to Other",
+    (await region("GB")) === "UK" && (await region("IE")) === "IE" && (await region("US")) === "US" && (await region("FR")) === "Other" && (await region(null)) === "Other");
+  expect("config carries the rewards preview with sample prizes for every region",
+    cfg.rewards?.draw?.prizes?.length === 4 && ["UK", "IE", "US", "Other"].every((r) => cfg.rewards.draw.prizes.every((p) => p.value[r]) && cfg.rewards.partner.offers[r]));
+  const rp = new Client();
+  await rp.call("/api/age-gate", "POST", { dob: ADULT });
+  const rs = (await rp.call("/api/state")).json.player;
+  expect("state carries regular-week counts and opt-in flag", rs.rewards.weeksRegular === 0 && rs.rewardsNotify === false, rs.rewards);
+  expect("reward events accept a rung and region", (await rp.call("/api/event", "POST", { name: "reward_interest", rung: "draw", region: "UK" })).status === 200 && (await rp.call("/api/event", "POST", { name: "rewards_viewed", region: "IE" })).status === 200);
+  expect("rewards opt-in needs a saved email first (400)", (await rp.call("/api/rewards/notify", "POST")).status === 400);
+  await rp.call("/api/email", "POST", { email: "rewards@example.org", consent: true });
+  expect("rewards opt-in works once an email is saved", (await rp.call("/api/rewards/notify", "POST")).status === 200 && (await rp.call("/api/state")).json.player.rewardsNotify === true);
+  expect("rewards opt-in refuses a visitor without an age check (401)", (await new Client().call("/api/rewards/notify", "POST")).status === 401);
+}
+
 // admin stats are locked
 const nobody = new Client();
 expect("stats are refused without signing in (401)", (await nobody.call("/api/admin/stats")).status === 401);

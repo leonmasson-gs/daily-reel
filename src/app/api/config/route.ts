@@ -9,6 +9,7 @@ export async function GET() {
     bonusSpinsPerWeekCap: config.bonusSpinsPerWeekCap,
     tiers: config.tiers,
     sets: config.sets,
+    rewards: config.rewards,
     partnerOffer: config.partnerOffer.enabled ? config.partnerOffer : null,
     odds: publishedOdds(),
   });

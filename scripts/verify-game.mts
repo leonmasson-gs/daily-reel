@@ -137,5 +137,26 @@ async function spin(id: string, draw: () => SpinResult) {
   ok("play three weeks ago does not produce a recap", (await getRecap(db.query, p)) === null);
 }
 
+// --- rewards rules (pure) ---
+{
+  const { regularProgress, partnerProgress, drawProgress, regionOf } = await import("../src/lib/rewards");
+  ok("Regular badge needs 5 days", !regularProgress(4).earned && regularProgress(5).earned && !regularProgress(6).fullWeek && regularProgress(7).fullWeek);
+  ok("partner offer unlocks at the Gold line (240)", !partnerProgress(239).earned && partnerProgress(240).earned, partnerProgress(240));
+  ok("draw: no entries below 4 days", drawProgress(3).entries === 0 && !drawProgress(3).qualifies);
+  ok("draw: one entry per day from day 4, capped at 7", drawProgress(4).entries === 4 && drawProgress(6).entries === 6 && drawProgress(7).entries === 7);
+  ok("region mapping: GB to UK, IE, US, anything else Other", regionOf("GB") === "UK" && regionOf("ie") === "IE" && regionOf("US") === "US" && regionOf("FR") === "Other" && regionOf(null) === "Other");
+}
+// --- weeks with 5+ days ---
+{
+  const p = await newPlayer();
+  const ins = (date: string, week: string, n: number) => db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,$2,$3,$4,'[\"cherry\",\"bell\",\"star\"]','none',6)", [p, date, week, n]);
+  const mon1 = "2026-08-03", mon2 = "2026-08-10";
+  for (let i = 0; i < 5; i++) await ins(new Date(Date.parse(mon1) + i * 86400000).toISOString().slice(0, 10), mon1, 1);
+  for (let i = 0; i < 7; i++) await ins(new Date(Date.parse(mon2) + i * 86400000).toISOString().slice(0, 10), mon2, 1);
+  const s = await buildState(p);
+  ok("state counts regular weeks (5+ days) and full weeks (7)", s!.rewards.weeksRegular === 2 && s!.rewards.weeksFull === 1, s!.rewards);
+  ok("state starts with no rewards opt-in", s!.rewardsNotify === false);
+}
+
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nAll rule checks passed");
 process.exit(failed ? 1 : 0);

@@ -68,6 +68,18 @@ export async function getStats(q: Query, now = new Date()) {
     "select meta->>'region' as region, count(*)::int as n from events where name = 'offer_clicked' group by 1 order by 2 desc",
   );
 
+  // Rewards preview: distinct players, so repeat taps never inflate the numbers
+  const { viewers } = await one<{ viewers: number }>(
+    "select count(distinct player_id)::int as viewers from events where name = 'rewards_viewed' and player_id is not null",
+  );
+  const viewersByRegion = await q<{ region: string | null; n: number }>(
+    "select meta->>'region' as region, count(distinct player_id)::int as n from events where name = 'rewards_viewed' and player_id is not null group by 1 order by 2 desc",
+  );
+  const interestRows = await q<{ rung: string | null; n: number }>(
+    "select meta->>'rung' as rung, count(distinct player_id)::int as n from events where name = 'reward_interest' and player_id is not null group by 1",
+  );
+  const { notify } = await one<{ notify: number }>("select count(*)::int as notify from players where rewards_notify");
+
   // Progress and sets
   const setRows = await q<{ set_id: string; n: number }>("select set_id, count(*)::int as n from set_awards group by set_id");
   const weekly = await q<{ points: number }>(
@@ -122,6 +134,16 @@ export async function getStats(q: Query, now = new Date()) {
         ctr: pctOf(ev.offer_clicked ?? 0, ev.offer_viewed ?? 0),
         byRegion: clicksByRegion.map((r) => ({ region: r.region ?? "Unknown", clicks: r.n })),
       },
+    },
+    rewards: {
+      viewers,
+      notifyOptIns: notify,
+      viewersByRegion: viewersByRegion.map((r) => ({ region: r.region ?? "Unknown", players: r.n })),
+      interest: [
+        { rung: "regular", label: `${config.rewards.regular.title} badge`, players: interestRows.find((r) => r.rung === "regular")?.n ?? 0 },
+        { rung: "partner", label: `${config.rewards.partner.tier} partner offer`, players: interestRows.find((r) => r.rung === "partner")?.n ?? 0 },
+        { rung: "draw", label: config.rewards.draw.title, players: interestRows.find((r) => r.rung === "draw")?.n ?? 0 },
+      ],
     },
     daily: days.map((d) => ({
       date: d,

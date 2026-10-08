@@ -13,6 +13,7 @@ type Stats = {
     monetise: { views: number; clicks: number; ctr: number | null; byRegion: { region: string; clicks: number }[] };
   };
   daily: { date: string; active: number; joined: number }[];
+  rewards: { viewers: number; notifyOptIns: number; viewersByRegion: { region: string; players: number }[]; interest: { rung: string; label: string; players: number }[] };
   daysPlayedThisWeek: { days: number; players: number }[];
   progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
   fairness: { spins: number; pair: { observed: number | null; published: number }; triple: { observed: number | null; published: number }; reels: { name: string; observed: number | null; published: number }[] };
@@ -169,6 +170,17 @@ export default function AdminStats() {
             <tr><td>Weekly recaps viewed</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.recapsViewed}</td></tr>
           </tbody></table>
         </div>
+      </div>
+
+      <div className="panel">
+        <h3>Rewards preview: what do players want?</h3>
+        <p className="small muted" style={{ fontFamily: "var(--sans)" }}>
+          {stats.rewards.viewers} player{stats.rewards.viewers === 1 ? "" : "s"} opened the preview and {stats.rewards.notifyOptIns} asked to hear when rewards launch. Each player counts once per reward.
+          {stats.rewards.viewersByRegion.length > 0 && ` Viewed from: ${stats.rewards.viewersByRegion.map((r) => `${r.region} ${r.players}`).join(", ")}.`}
+        </p>
+        <table className="odds"><tbody>
+          {stats.rewards.interest.map((r) => <tr key={r.rung}><td>{r.label}: "I'd play for this"</td><td className="tnum" style={{ textAlign: "right" }}>{r.players}</td></tr>)}
+        </tbody></table>
       </div>
 
       <div className="panel">

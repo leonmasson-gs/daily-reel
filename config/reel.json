@@ -158,5 +158,107 @@
       ],
       "points": 75
     }
-  ]
+  ],
+  "rewards": {
+    "label": "Preview. Not live. Nothing is awarded in this version.",
+    "product": "Casino games",
+    "regions": [
+      "UK",
+      "IE",
+      "US",
+      "Other"
+    ],
+    "regular": {
+      "title": "Regular",
+      "daysNeeded": 5,
+      "fullWeekDays": 7,
+      "perk": "A Regular badge on your profile and a lasting count of your regular weeks. It has no cash value."
+    },
+    "partner": {
+      "title": "Exclusive partner offer",
+      "tier": "Gold",
+      "sponsor": "Example Sports (fictional partner)",
+      "offers": {
+        "UK": {
+          "headline": "50 free spins on a featured slot",
+          "body": "Sample offer. New customers only. 18+. T&Cs apply. BeGambleAware.org"
+        },
+        "IE": {
+          "headline": "50 free spins on a featured slot",
+          "body": "Sample offer. New customers only. 18+. T&Cs apply. Gamble responsibly."
+        },
+        "US": {
+          "headline": "First-deposit casino bonus",
+          "body": "Sample offer. Licensed states only. Age limits vary by state, 21+ in most. T&Cs apply. Problem gambling help: 1-800-GAMBLER."
+        },
+        "Other": {
+          "headline": "Welcome offer from our partner",
+          "body": "Sample offer. Availability depends on your country. 18+. T&Cs apply."
+        }
+      }
+    },
+    "draw": {
+      "title": "Weekly draw",
+      "minDays": 4,
+      "maxEntries": 7,
+      "schedule": "Every Monday at 12:00 UTC (sample)",
+      "prizes": [
+        {
+          "id": "voucher",
+          "name": "Gift voucher",
+          "art": "voucher",
+          "value": {
+            "UK": "£100",
+            "IE": "€100",
+            "US": "$100",
+            "Other": "100 in local currency"
+          }
+        },
+        {
+          "id": "hamper",
+          "name": "Merchandise hamper",
+          "art": "hamper",
+          "value": {
+            "UK": "£60 retail value",
+            "IE": "€60 retail value",
+            "US": "$60 retail value",
+            "Other": "Retail value to be confirmed"
+          }
+        },
+        {
+          "id": "experience",
+          "name": "Experience credit",
+          "art": "ticket",
+          "value": {
+            "UK": "£150 towards an event",
+            "IE": "€150 towards an event",
+            "US": "$150 towards an event",
+            "Other": "Value to be confirmed"
+          }
+        },
+        {
+          "id": "subscription",
+          "name": "Premium subscription",
+          "art": "star",
+          "value": {
+            "UK": "3 months",
+            "IE": "3 months",
+            "US": "3 months",
+            "Other": "3 months"
+          }
+        }
+      ]
+    },
+    "terms": [
+      "Free to enter. No purchase necessary.",
+      "Open to players aged 18 or over, or 21 or over where local law requires.",
+      "One entry for each day you play in the week, up to 7. You need to play on at least 4 days to enter.",
+      "One winner per pool each week. Pools are split by region and by product.",
+      "Winners are picked at random by an independent process and checked for eligibility before any prize is confirmed.",
+      "Winners are contacted by email and must reply within 14 days.",
+      "Prizes have no cash alternative.",
+      "Not available in every region. Local rules apply. Promoter details and full terms to be added."
+    ],
+    "sampleWinner": "Sample only. Week of 28 September, UK, Casino games: the player ending 4821 won a £100 gift voucher."
+  }
 }
