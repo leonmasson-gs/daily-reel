@@ -15,7 +15,7 @@ import { RewardsScreen, RewardsTeaser } from "./Rewards";
 import type { RewardsCfg } from "@/lib/rewards";
 import { KEYS, canVibrate, playSound, readFlag, vibrate, writeFlag, type SoundKind } from "@/lib/fx";
 
-type Sym = { id: string; name: string; icon: string; rarity: string; points: number; chancePerReel: number };
+type Sym = { id: string; name: string; icon: string; rarity: string; points: number; chancePerReel: number; wild?: boolean };
 type Cfg = {
   copy: { title: string; tagline: string; footer: string };
   minAge: number;
@@ -38,6 +38,8 @@ type Cfg = {
 type Player = {
   inviteCode: string;
   featured: { id: string; multiplier: number };
+  boost: { id: string; label: string; text: string };
+  mission: { id: string; title: string; points: number; symbol: string | null; done: boolean; awarded: boolean };
   emailSaved: boolean;
   rewardsNotify: boolean;
   rewards: { weeksRegular: number; weeksFull: number };
@@ -48,7 +50,7 @@ type Player = {
   week: { start: string; today: string; resetsAt: string; trophies: number; trophiesNeeded: number; grand: boolean; daysPlayed: string[]; points: number; tier: { id: string; name: string; minPoints: number }; nextTier: { name: string; minPoints: number } | null; pointsToNext: number };
 };
 type Tab = "play" | "collection" | "tier" | "friends" | "rewards";
-type SpinResult = { symbols: string[]; outcome: "triple" | "pair" | "none"; points: number; isBonus: boolean; featuredHits?: number };
+type SpinResult = { symbols: string[]; outcome: "triple" | "pair" | "none"; points: number; isBonus: boolean; featuredHits?: number; resolved?: string[]; wilds?: number };
 
 const pct = (n: number) => (n * 100 < 1 ? (n * 100).toFixed(2) : (n * 100).toFixed(1)) + "%";
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -104,6 +106,7 @@ export default function Game() {
   const [minAge, setMinAge] = useState(18);
   const [grandUp, setGrandUp] = useState(false);
   const [bonus, setBonus] = useState(false);
+  const [moment, setMoment] = useState<{ m: string; tier?: string } | null>(null);
   function setRegion(r: string) {
     setRegionState(r);
     try { window.localStorage.setItem("dr_region", r); } catch { /* not saved */ }
@@ -311,9 +314,10 @@ export default function Game() {
       )}
       <ResponsibleFooter rg={cfg.responsible} region={region} />
 
-      {sharing && player && (
+      {(sharing || moment) && player && (
         <ShareDialog
-          onClose={() => setSharing(false)}
+          moment={moment ?? undefined}
+          onClose={() => { setSharing(false); setMoment(null); }}
           data={{
             inviteCode: player.inviteCode,
             tierName: player.week.tier.name,
@@ -325,18 +329,18 @@ export default function Game() {
         />
       )}
       {!intro && !recap && !bonus && !tierUp && grandUp && player && (
-        <GrandDialog trophies={player.week.trophies} onClose={() => setGrandUp(false)} />
+        <GrandDialog trophies={player.week.trophies} onClose={() => setGrandUp(false)} onShare={() => setMoment({ m: "grand" })} />
       )}
       {bonus && !intro && !recap && player && (
         <BonusRound
-          bands={cfg.bonus.bands} skipPoints={cfg.bonus.skipPoints} feel={feel}
+          bands={cfg.bonus.bands} skipPoints={cfg.bonus.skipPoints} feel={feel} onShare={(m) => setMoment({ m })}
           onDone={(r) => { setBonus(false); if (r) { setPlayer(r.state as Player); if (r.tierUp) setTierUp(r.tierUp); } }}
         />
       )}
       {intro && <Intro onDone={() => closeIntro(false)} onSkip={() => closeIntro(true)} />}
       {!intro && recap && <RecapDialog recap={recap} onClose={closeRecap} />}
       {!intro && !recap && !bonus && tierUp && player && (
-        <TierUp from={tierUp.from} to={tierUp.to} pointsToNext={player.week.pointsToNext} nextName={player.week.nextTier?.name ?? null} onClose={() => setTierUp(null)} />
+        <TierUp from={tierUp.from} to={tierUp.to} pointsToNext={player.week.pointsToNext} nextName={player.week.nextTier?.name ?? null} onClose={() => setTierUp(null)} onShare={() => setMoment({ m: "tier", tier: tierUp.to })} />
       )}
     </main>
     </SkinContext.Provider>
@@ -353,18 +357,17 @@ function tierPct(p: Player) {
 /* ------------------------------------------------------------------ */
 
 function AgeGate({ cfg, minAge, onDone }: { cfg: Cfg; minAge: number; onDone: () => Promise<boolean> }) {
-  const [dob, setDob] = useState("");
   const [err, setErr] = useState("");
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [invited, setInvited] = useState(false);
   useEffect(() => { setInvited(Boolean(new URLSearchParams(window.location.search).get("ref"))); }, []);
-  const oldest = new Date(Date.now() - 120 * 365.25 * 864e5).toISOString().slice(0, 10);
 
-  async function submit() {
+  /** One tap: "I am {minAge} or over" or "I am under {minAge}". A declaration, which the server records but cannot verify. */
+  async function answer(over: boolean) {
     setBusy(true); setErr("");
     const ref = new URLSearchParams(window.location.search).get("ref") ?? "";
-    const r = await fetch("/api/age-gate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dob, ref }) });
+    const r = await fetch("/api/age-gate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ over, ref }) });
     const j = await r.json();
     setBusy(false);
     if (r.ok) {
@@ -390,12 +393,12 @@ function AgeGate({ cfg, minAge, onDone }: { cfg: Cfg; minAge: number; onDone: ()
       <h2>Confirm your age</h2>
       {invited && <p className="invite-note"><b>A friend invited you.</b> You get your own three free spins a day. Friends who invite each other can compare collections on a friends board. It shows only a random nickname, your tier and your symbols.</p>}
       <p>{cfg.copy.tagline}</p>
-      <p className="muted">You must be {minAge} or over. We check your date of birth and do not store it.</p>
-      <label className="field" htmlFor="dob">Date of birth</label>
-      <input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} min={oldest} max={new Date().toISOString().slice(0, 10)} />
+      <p className="muted">You must be {minAge} or over to play. We do not ask for or store a date of birth.</p>
       {err && <div className="err" role="alert">{err}</div>}
       <div style={{ height: 14 }} />
-      <button className="btn" disabled={!dob || busy} onClick={submit}>Continue</button>
+      <button id="over" className="btn" disabled={busy} onClick={() => answer(true)}>I am {minAge} or over</button>
+      <div style={{ height: 10 }} />
+      <button id="under" className="btn quiet" disabled={busy} onClick={() => answer(false)}>I am under {minAge}</button>
     </div>
   );
 }
@@ -603,12 +606,13 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
   const [showOdds, setShowOdds] = useState(false);
   const [fresh, setFresh] = useState(false);
   const [notice, setNotice] = useState("");
+  const [missionDone, setMissionDone] = useState<{ title: string; points: number } | null>(null);
   const pts = useCountUp(result?.points ?? 0, runKey);
   const left = player.spins.remaining;
   const untilReset = useCountdown(player.spins.resetsAt, refresh);
 
   async function spin() {
-    setErr(""); setNotice(""); setResult(null); setNewSets([]); setHits([false, false, false]); setSettled([false, false, false]); setFresh(false);
+    setErr(""); setNotice(""); setResult(null); setNewSets([]); setMissionDone(null); setHits([false, false, false]); setSettled([false, false, false]); setFresh(false);
     setBusy(true);
     reels.forEach((r) => r.current?.spin());
     const t0 = performance.now();
@@ -644,17 +648,21 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
       ),
     );
     setShown(out.symbols);
+    const scoredIds = out.resolved ?? out.symbols;
     const counts = new Map<string, number>();
-    out.symbols.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
-    setHits(out.symbols.map((id) => out.outcome !== "none" && (counts.get(id) ?? 0) >= 2));
+    scoredIds.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
+    setHits(scoredIds.map((id) => out.outcome !== "none" && (counts.get(id) ?? 0) >= 2));
     setResult(out); setRunKey((k) => k + 1);
+    setMissionDone(res.j.missionDone ?? null);
     setNewSets(res.j.newSets ?? []);
     setPlayer(res.j.state);
     setFresh(true);
     setBusy(false);
 
-    if (out.outcome === "triple") { feel.sound("match"); feel.buzz([30, 40, 30, 40, 60]); }
+    if (out.outcome === "triple") { feel.sound("triple"); feel.buzz([30, 40, 30, 40, 60]); }
     else if (out.outcome === "pair") { feel.sound("match"); feel.buzz([20, 30, 20]); }
+    if ((out.wilds ?? 0) > 0) { await sleep(250); feel.sound("wild"); }
+    if (res.j.missionDone) { await sleep(350); feel.sound("mission"); feel.buzz([20, 30, 20]); }
     if (res.j.bonusRound) { await sleep(1000); onBonus(); }
     if ((res.j.newSets ?? []).length) { await sleep(450); feel.sound("set"); feel.buzz([25, 50, 25]); }
     if (res.j.tierUp) {
@@ -675,13 +683,15 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
   const baseUsed = player.spins.perDay - player.spins.baseRemaining;
   const bonusLeft = player.spins.bonusRemaining;
 
+  const scored = result ? (result.resolved ?? result.symbols) : [];
   const whatText = result
     ? result.outcome === "triple"
-      ? `Triple match: ${symById.get(result.symbols[0])?.name}`
+      ? `Triple match: ${symById.get(scored[0])?.name}`
       : result.outcome === "pair"
-        ? `Matched pair: ${symById.get(result.symbols.find((id, i, a) => a.indexOf(id) !== i)!)?.name}`
+        ? `Matched pair: ${symById.get(scored.find((id, i, a) => a.indexOf(id) !== i)!)?.name}`
         : "No match"
     : "";
+  const wildNames = result ? result.symbols.map((id, i) => (symById.get(id)?.wild ? symById.get(scored[i])?.name : null)).filter(Boolean) : [];
   const mult = result ? (result.outcome === "triple" ? cfg.odds.multipliers.triple : result.outcome === "pair" ? cfg.odds.multipliers.pair : 1) : 1;
 
   return (
@@ -700,6 +710,8 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
               <div className="pts tnum">+{pts} points</div>
               {mult > 1 && <div className="hint small">Symbol points multiplied by {mult}</div>}
               {(result.featuredHits ?? 0) > 0 && <div className="bonusline">Featured symbol: its points counted double.</div>}
+              {wildNames.length > 0 && <div className="bonusline">Wild: it stood in as {wildNames.join(" and ")}.</div>}
+              {missionDone && <div className="bonusline">Mission complete: +{missionDone.points} points.</div>}
               {result.outcome === "triple" && <div className="bonusline">Trophy earned. {player.week.trophies} of {player.week.trophiesNeeded} this week.</div>}
               {newSets.map((s) => <div key={s.id} className="bonusline">Set complete: {s.name}. +{s.points} bonus points</div>)}
             </>
@@ -718,6 +730,11 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
           <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : `All spins used. New spins ${resetToday ? "today" : "tomorrow"} at ${cfg.reset.label}`}</span>
         </div>
 
+        {result?.outcome === "triple" && (
+          <div className="burst" key={runKey} aria-hidden>
+            {Array.from({ length: 14 }, (_, i) => <i key={i} style={{ "--a": `${i * (360 / 14)}deg` } as React.CSSProperties} />)}
+          </div>
+        )}
         {featured && (
           <div className="featured">
             <Glyph id={featured.id} rarity={featured.rarity} title={featured.name} />
@@ -744,16 +761,30 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
               <thead><tr><th /><th>Symbol</th><th>Chance per reel</th><th>Points</th></tr></thead>
               <tbody>
                 {cfg.odds.symbols.map((s) => (
-                  <tr key={s.id}><td className="g"><Glyph id={s.id} rarity={s.rarity} title={s.name} /></td><td>{s.name}</td><td className="tnum">{pct(s.chancePerReel)}</td><td className="tnum">{s.points}</td></tr>
+                  <tr key={s.id}><td className="g"><Glyph id={s.id} rarity={s.rarity} title={s.name} /></td><td>{s.name}</td><td className="tnum">{pct(s.chancePerReel)}</td><td className="tnum">{s.wild ? "Any" : s.points}</td></tr>
                 ))}
               </tbody>
             </table>
             <p className="small muted">
-              Each reel is an independent random draw made on our server. Today's featured symbol counts double in the points and never changes the odds. Per spin: {pct(cfg.odds.pair)} chance of exactly one pair (points x{cfg.odds.multipliers.pair}), {pct(cfg.odds.triple)} chance of three of a kind (points x{cfg.odds.multipliers.triple}), {pct(cfg.odds.none)} no match. Set bonuses are one-off and never change the odds.
+              Each reel is an independent random draw made on our server. Today's featured symbol and today's boost only change how points are counted, never the odds. A Wild stands in for whichever symbol gives the best result. Per spin: {pct(cfg.odds.pair)} chance of exactly one pair (points x{cfg.odds.multipliers.pair}), {pct(cfg.odds.triple)} chance of three of a kind (points x{cfg.odds.multipliers.triple}), {pct(cfg.odds.none)} no match. Set bonuses are one-off and never change the odds.
             </p>
           </div>
         )}
       </div>
+
+      <div className="today" role="group" aria-label="Today">
+        {player.boost.id !== "quiet" && (
+          <div className="todayrow"><span className="tag">Boost</span><span className="small"><b>{player.boost.label}.</b> {player.boost.text}</span></div>
+        )}
+        <div className="todayrow">
+          <span className={"tick" + (player.mission.done ? " on" : "")} aria-hidden>{player.mission.done ? "✓" : ""}</span>
+          <span className="small">
+            <b>Today's mission:</b> {player.mission.title.replace("{symbol}", cfg.odds.symbols.find((s) => s.id === player.mission.symbol)?.name ?? "symbol")}{" "}
+            <span className="muted">+{player.mission.points} points{player.mission.done ? ". Done" : ""}</span>
+          </span>
+        </div>
+      </div>
+      {left === 0 && <Pulse day={player.week.today} />}
 
       {!player.emailSaved && (
         <EmailCard
@@ -773,6 +804,30 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
       )}
       {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} region={region} minAge={minAge} support={cfg.responsible.support[region] ?? cfg.responsible.support.Other} />}
     </>
+  );
+}
+
+/** One tap a day on how the play felt. It goes to the stats page and answers the brief's "Enjoyable" question directly. */
+function Pulse({ day }: { day: string }) {
+  const key = "dr_pulse_day";
+  const [answered, setAnswered] = useState(true);
+  const [thanks, setThanks] = useState(false);
+  useEffect(() => { try { setAnswered(window.localStorage.getItem(key) === day); } catch { setAnswered(false); } }, [day]);
+  function send(score: 1 | 2 | 3) {
+    setAnswered(true); setThanks(true);
+    try { window.localStorage.setItem(key, day); } catch { /* asked again next time */ }
+    fetch("/api/enjoyment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ score }) }).catch(() => {});
+  }
+  if (answered) return thanks ? <p className="small muted" role="status" style={{ fontFamily: "var(--sans)", margin: "10px 2px" }}>Thanks, that helps.</p> : null;
+  return (
+    <div className="panel pulse">
+      <h3>How was today?</h3>
+      <div className="pulsebtns">
+        <button className="btn quiet" onClick={() => send(1)}><span aria-hidden>😀</span> Enjoyed it</button>
+        <button className="btn quiet" onClick={() => send(2)}><span aria-hidden>😐</span> It was okay</button>
+        <button className="btn quiet" onClick={() => send(3)}><span aria-hidden>🙁</span> Not for me</button>
+      </div>
+    </div>
   );
 }
 

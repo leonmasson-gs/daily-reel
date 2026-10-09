@@ -86,6 +86,10 @@ export async function getStats(q: Query, now = new Date()) {
     [week, config.trophies.needed],
   );
 
+  // How was today's play? (the enjoyment tap) and missions completed this week
+  const enjoyRows = await q<{ score: string; n: number }>("select meta->>'score' as score, count(*)::int as n from events where name = 'enjoyment' group by 1");
+  const { missions_done } = await one<{ missions_done: number }>("select count(*)::int as missions_done from mission_awards where week_start = $1", [week]);
+
   // Bonus rounds: how players did
   const bonusRows = await q<{ label: string | null; n: number }>(
     "select meta->>'label' as label, count(*)::int as n from events where name = 'bonus_played' group by 1 order by 2 desc",
@@ -97,7 +101,8 @@ export async function getStats(q: Query, now = new Date()) {
     `select (coalesce(sp.pts, 0) + coalesce(sa.pts, 0))::int as points
        from (select distinct player_id from spins where week_start = $1) p
        left join (select player_id, sum(points + bonus_points) pts from spins where week_start = $1 group by player_id) sp using (player_id)
-       left join (select player_id, sum(points) pts from set_awards where week_start = $1 group by player_id) sa using (player_id)`,
+       left join (select player_id, sum(points) pts from set_awards where week_start = $1 group by player_id) sa using (player_id)
+      left join (select player_id, sum(points) pts from mission_awards where week_start = $1 group by player_id) ma using (player_id)`,
     [week],
   );
   const tiers = config.tiers.map((t) => ({ name: t.name, players: 0 }));
@@ -166,6 +171,8 @@ export async function getStats(q: Query, now = new Date()) {
     progress: {
       tiersThisWeek: tiers,
       sets: config.sets.map((s) => ({ name: s.name, completed: setRows.find((r) => r.set_id === s.id)?.n ?? 0 })),
+      enjoyment: { good: enjoyRows.find((r) => r.score === "1")?.n ?? 0, okay: enjoyRows.find((r) => r.score === "2")?.n ?? 0, notGood: enjoyRows.find((r) => r.score === "3")?.n ?? 0 },
+      missionsDoneThisWeek: missions_done,
       bonusRounds: bonusRows.map((r) => ({ label: r.label ?? "Unknown", n: r.n })),
       trophyPlayers: trophy_players,
       grandPlayers: grand_players,

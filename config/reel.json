@@ -67,6 +67,15 @@
       "rarity": "Legendary",
       "weight": 1,
       "points": 40
+    },
+    {
+      "id": "wild",
+      "name": "Wild",
+      "icon": "🃏",
+      "rarity": "Legendary",
+      "weight": 3,
+      "points": 10,
+      "wild": true
     }
   ],
   "multipliers": {
@@ -148,7 +157,8 @@
         "star",
         "gem",
         "crown",
-        "golden-reel"
+        "golden-reel",
+        "wild"
       ],
       "points": 75
     }
@@ -329,6 +339,60 @@
         "min": 0,
         "label": "Miss",
         "points": 2
+      }
+    ]
+  },
+  "boosts": {
+    "defs": {
+      "pair-power": {
+        "label": "Pair power",
+        "text": "Pairs count x3 instead of x2.",
+        "pairMult": 3
+      },
+      "rare-bonus": {
+        "label": "Rare bonus",
+        "text": "Every Rare, Epic or Legendary symbol adds 2 points.",
+        "rareBonus": 2
+      },
+      "triple-surge": {
+        "label": "Triple surge",
+        "text": "Triples count x7 instead of x5.",
+        "tripleMult": 7
+      },
+      "quiet": {
+        "label": "Quiet day",
+        "text": "No boost today. The featured symbol still counts double."
+      }
+    },
+    "rotation": [
+      "pair-power",
+      "rare-bonus",
+      "triple-surge",
+      "quiet"
+    ],
+    "matchdays": {}
+  },
+  "missions": {
+    "list": [
+      {
+        "id": "land-symbol",
+        "title": "Land a {symbol}",
+        "points": 10
+      },
+      {
+        "id": "match-pair",
+        "title": "Match a pair or better",
+        "points": 8
+      },
+      {
+        "id": "rare-find",
+        "title": "Find a Rare symbol or better",
+        "points": 8
+      },
+      {
+        "id": "score-20",
+        "title": "Score 20 points today",
+        "points": 8
       }
     ]
   }

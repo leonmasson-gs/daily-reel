@@ -6,6 +6,7 @@ import { Glyph } from "./Glyph";
 type Sym = { id: string; name: string; rarity: string };
 type Entry = { nickname: string; you: boolean; hidden: boolean; tier?: string; points?: number; trophies?: number; sets?: number; found?: string[] };
 type Board = { me: Entry; friends: Entry[]; visible: boolean };
+type Top = { top: { rank: number; nickname: string; tier: string; points: number; you: boolean }[]; total: number; me: { rank: number; points: number; nickname: string; tier: string } | null };
 
 const track = (name: string) =>
   fetch("/api/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }).catch(() => {});
@@ -46,6 +47,18 @@ export function Friends({ symbols, minAge, minAgeUS, bonusCap, inviteCode }: { s
   const [board, setBoard] = useState<Board | null>(null);
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<"friends" | "top">("friends");
+  const [top, setTop] = useState<Top | null>(null);
+  const [lbErr, setLbErr] = useState("");
+  const loadTop = useCallback(async () => {
+    setLbErr("");
+    try {
+      const r = await fetch("/api/leaderboard", { cache: "no-store" });
+      if (!r.ok) throw new Error("lb");
+      setTop(await r.json());
+    } catch { setLbErr("We could not load the top players."); }
+  }, []);
+  useEffect(() => { if (view === "top") loadTop(); }, [view, loadTop]);
   const link = typeof window === "undefined" ? "" : `${window.location.origin}/?ref=${inviteCode}`;
 
   const load = useCallback(async () => {
@@ -93,7 +106,50 @@ export function Friends({ symbols, minAge, minAgeUS, bonusCap, inviteCode }: { s
       <button className="btn" onClick={share}>{copied ? "Link copied" : "Share your link"}</button>
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Only share it with people who meet the age rule.</p>
 
-      <h3 style={{ marginTop: 26 }}>Friends board</h3>
+      <div className="viewtoggle" role="group" aria-label="Which board">
+        <button className="pillbtn" aria-pressed={view === "friends"} onClick={() => setView("friends")}>Friends</button>
+        <button className="pillbtn" aria-pressed={view === "top"} onClick={() => setView("top")}>Top players</button>
+      </div>
+
+      {view === "top" ? (
+        <>
+          <h3 style={{ marginTop: 18 }}>Top players this week</h3>
+          <p className="small muted" style={{ fontFamily: "var(--sans)", marginTop: 4 }}>
+            The ten highest scores this week, shown by generated nickname only. It is for fun: nothing is awarded for rank. Anyone who hides from boards is left out of the list.
+          </p>
+          {lbErr && <div className="err" role="alert">{lbErr} <button className="link" onClick={loadTop}>Try again</button></div>}
+          {!top && !lbErr && <p className="small muted" role="status">Loading…</p>}
+          {top && (
+            <>
+              <ol className="lb" aria-label="Top players this week">
+                {top.top.map((r) => (
+                  <li key={r.rank + r.nickname} className={r.you ? "me" : ""}>
+                    <span className="rank">{r.rank}</span>
+                    <span className="nm"><b>{r.nickname}</b>{r.you && <span className="chip" style={{ marginLeft: 8 }}>You</span>} <span className="small muted">{r.tier}</span></span>
+                    <span className="tnum"><b>{r.points}</b> <span className="small muted">pts</span></span>
+                  </li>
+                ))}
+                {top.me && !top.top.some((r) => r.you) && (
+                  <>
+                    <li className="gap" aria-hidden><span /><span className="small muted">…</span><span /></li>
+                    <li className="me">
+                      <span className="rank">{top.me.rank}</span>
+                      <span className="nm"><b>{top.me.nickname}</b><span className="chip" style={{ marginLeft: 8 }}>You</span> <span className="small muted">{top.me.tier}</span></span>
+                      <span className="tnum"><b>{top.me.points}</b> <span className="small muted">pts</span></span>
+                    </li>
+                  </>
+                )}
+              </ol>
+              {top.top.length === 0 && <p className="muted">Nobody has scored yet this week. Take a spin to be first.</p>}
+              <p className="small" style={{ fontFamily: "var(--sans)", marginTop: 12 }}>
+                {top.me ? <>You are <b>number {top.me.rank}</b> of {top.total} player{top.total === 1 ? "" : "s"} with a score this week, on {top.me.points} points.</> : "Take a spin to join the board."}
+              </p>
+            </>
+          )}
+        </>
+      ) : (
+        <>
+      <h3 style={{ marginTop: 18 }}>Friends board</h3>
       <p className="small muted" style={{ fontFamily: "var(--sans)", marginTop: 4 }}>
         Compare collections with the people you invited and the person who invited you. Friends see only a random nickname, your tier, your points and which symbols you have found. Never your email.
       </p>
@@ -116,6 +172,8 @@ export function Friends({ symbols, minAge, minAgeUS, bonusCap, inviteCode }: { s
               <span>Show my progress on my friends' boards. If you turn this off they see you as "Private friend".</span>
             </label>
           </div>
+        </>
+      )}
         </>
       )}
     </div>

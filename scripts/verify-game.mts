@@ -7,6 +7,7 @@ import { buildState, weekPoints } from "../src/lib/game";
 import { getRecap, markRecapSeen, previousWeekStart } from "../src/lib/recap";
 import { scoreSpin, type SpinResult } from "../src/lib/engine";
 import { addDays, playDate, weekStart } from "../src/lib/dates";
+import { config } from "../src/lib/config";
 
 let failed = 0;
 const ok = (label: string, cond: boolean, extra?: unknown) => { if (!cond) failed++; console.log(cond ? "PASS" : "FAIL", label, cond ? "" : JSON.stringify(extra)); };
@@ -34,13 +35,14 @@ async function spin(id: string, draw: () => SpinResult) {
   ok("set bonus is 10 points", r.newSets[0].points === 10);
   const s1 = await buildState(p);
   const spinPts = (await db.query<{ n: number }>("select sum(points)::int as n from spins where player_id = $1", [p]))[0].n;
-  ok("week points = spin points + set bonus", s1!.week.points === spinPts + 10, [s1!.week.points, spinPts]);
+  const missionPts = (await db.query<{ n: number }>("select coalesce(sum(points), 0)::int as n from mission_awards where player_id = $1", [p]))[0].n;
+  ok("week points = spin points + set bonus + any daily mission", s1!.week.points === spinPts + 10 + missionPts, [s1!.week.points, spinPts, missionPts]);
   const everyday = s1!.sets.find((s) => s.id === "everyday")!;
   ok("state reports the set as complete", everyday.complete && everyday.found === 3);
   r = await spin(p, force("cherry", "bell", "lemon"));
   ok("a completed set never pays twice", r.newSets.length === 0);
   const full = s1!.sets.find((s) => s.id === "full-reel")!;
-  ok("full reel progress counts owned symbols", full.found === 3 && full.total === 8, full);
+  ok("full reel progress counts owned symbols", full.found === 3 && full.total === config.symbols.length, full);
 }
 
 // --- one spin completing two sets at once ---
@@ -52,13 +54,18 @@ async function spin(id: string, draw: () => SpinResult) {
   ok("two sets can complete on one spin", r.newSets.map((s) => s.id).sort().join() === "lucky,treasury", r.newSets);
 }
 
+const noMission = (p: string) => db.query("insert into mission_awards (player_id, play_date, week_start, mission_id, points) values ($1, $2, $3, 'test', 0) on conflict do nothing", [p, playDate(), weekStart()]);
+
 // --- full reel ---
 {
   const p = await newPlayer();
   await spin(p, force("cherry", "bell", "lemon"));
   await spin(p, force("clover", "star", "gem"));
-  const r = await spin(p, force("crown", "golden-reel", "cherry"));
-  ok("full reel completes with all eight symbols", r.newSets.some((s) => s.id === "full-reel") && r.newSets.some((s) => s.id === "treasury"), r.newSets);
+  const r3 = await spin(p, force("crown", "golden-reel", "cherry"));
+  ok("Treasury completes when the Gem and Crown are both found", r3.newSets.some((s) => s.id === "treasury") && !r3.newSets.some((s) => s.id === "full-reel"), r3.newSets);
+  await db.query("update players set email_bonus_granted = true where id = $1", [p]);
+  const r = await spin(p, force("wild", "cherry", "bell"));
+  ok("full reel completes once every symbol, including the Wild, has been found", r.newSets.length === 1 && r.newSets[0].id === "full-reel", r.newSets);
 }
 
 // --- tier-up ---
@@ -281,6 +288,7 @@ async function spin(id: string, draw: () => SpinResult) {
 
   // a bonus can carry a player over a tier line
   const f = await newPlayer();
+  await noMission(f);
   const week = weekStart();
   await db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,'2000-01-01',$2,99,'[\"cherry\",\"bell\",\"star\"]','none',100)", [f, week]);
   await spin(f, force("cherry", "cherry", "cherry"));              // 100 + 15 = 115, still Bronze
@@ -290,6 +298,40 @@ async function spin(id: string, draw: () => SpinResult) {
   // the featured symbol is part of state
   const st = await buildState(a);
   ok("state tells the page today's featured symbol", st!.featured.id === featuredSymbol(playDate()) && st!.featured.multiplier === 2, st!.featured);
+}
+
+// --- the daily mission ---
+{
+  const { missionFor, missionStatus } = await import("../src/lib/missions");
+  const { boostForDay } = await import("../src/lib/boosts");
+  const m = missionFor(playDate());
+  const p = await newPlayer();
+  const st0 = await buildState(p);
+  ok("state shows today's mission, not yet done", st0!.mission.id === m.id && st0!.mission.done === false && st0!.mission.awarded === false, st0!.mission);
+  // play whatever completes today's mission
+  const winning: Record<string, string[]> = {
+    "land-symbol": [m.symbol ?? "cherry", "bell", "lemon"], "match-pair": ["bell", "bell", "lemon"],
+    "rare-find": ["star", "cherry", "bell"], "score-20": ["gem", "gem", "gem"],
+  };
+  const before = (await buildState(p))!.week.points;
+  const r = await spin(p, force(...(winning[m.id] as [string, string, string])));
+  ok("completing the mission pays it once, straight away", r.missionDone?.id === m.id && r.missionDone.points === m.points, r.missionDone);
+  const st1 = await buildState(p);
+  const spinPts = r.spin.points;
+  const sets = (await db.query<{ n: number }>("select coalesce(sum(points), 0)::int as n from set_awards where player_id = $1", [p]))[0].n;
+  ok("the mission points count towards the week", st1!.week.points === before + spinPts + sets + m.points, [st1!.week.points, before, spinPts, sets, m.points]);
+  ok("state shows it done and paid", st1!.mission.done && st1!.mission.awarded);
+  const r2 = await spin(p, force("gem", "gem", "gem"));
+  ok("a mission never pays twice in a day", r2.missionDone === null);
+  const q = await newPlayer();
+  ok("a different player's mission is not complete", (await missionStatus(db.query, q)).done === false);
+  ok("state names today's boost", st1!.boost.id === boostForDay(playDate()).id && typeof st1!.boost.text === "string", st1!.boost);
+
+  // a Wild is collected as its own symbol
+  const w = await newPlayer(); await noMission(w);
+  await spin(w, force("wild", "cherry", "bell"));
+  const owned = (await db.query<{ s: string }>("select distinct jsonb_array_elements_text(symbols) as s from spins where player_id = $1", [w])).map((x) => x.s);
+  ok("a Wild goes into the collection as the Wild", owned.includes("wild"), owned);
 }
 
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nAll rule checks passed");

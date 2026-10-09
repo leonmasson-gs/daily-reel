@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Overlays";
 import { useSkin } from "./SkinContext";
+import type { SoundKind } from "@/lib/fx";
 
 type Band = { min: number; label: string; points: number };
 export type BonusResult = { label: string; points: number; tierUp: { from: string; to: string } | null; state: unknown };
-type Feel = { sound: (k: "tick" | "stop" | "match" | "set" | "tier") => void; buzz: (p: number | number[]) => void };
+type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
 const SWEEP_MS = 1100; // one sweep of the marker, edge to edge
 
@@ -15,7 +16,7 @@ const SWEEP_MS = 1100; // one sweep of the marker, edge to edge
  * closer to the middle is worth more. Anyone who cannot or does not want to time it can take the standard bonus,
  * which is worth about the same as a good stop, so nobody is punished for not playing.
  */
-export function BonusRound({ bands, skipPoints, onDone, feel }: { bands: Band[]; skipPoints: number; onDone: (r: BonusResult | null) => void; feel: Feel }) {
+export function BonusRound({ bands, skipPoints, onDone, feel, onShare }: { bands: Band[]; skipPoints: number; onDone: (r: BonusResult | null) => void; feel: Feel; onShare?: (m: "perfect" | "great") => void }) {
   const skin = useSkin();
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const [phase, setPhase] = useState<"play" | "sending" | "result" | "error">("play");
@@ -47,7 +48,7 @@ export function BonusRound({ bands, skipPoints, onDone, feel }: { bands: Band[];
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setErr(j.message ?? "We could not save the bonus."); setPhase("error"); return; }
       setResult(j); setPhase("result");
-      if (j.label === "Perfect") { feel.sound("match"); feel.buzz([30, 40, 30]); } else feel.buzz(15);
+      if (j.label === "Perfect") { feel.sound("perfect"); feel.buzz([30, 40, 30]); } else feel.buzz(15);
     } catch {
       setErr("We could not reach the game. Check your connection and try again."); setPhase("error");
     }
@@ -104,6 +105,9 @@ export function BonusRound({ bands, skipPoints, onDone, feel }: { bands: Band[];
           <div className="pts tnum" style={{ fontSize: "1.75rem", fontWeight: 800 }}>+{result.points} points</div>
           <div style={{ height: 14 }} />
           <button className="btn" autoFocus onClick={() => onDone(result)}>Continue</button>
+          {onShare && (result.label === "Perfect" || result.label === "Great") && (
+            <button className="link" style={{ display: "block", margin: "8px auto 0" }} onClick={() => onShare(result.label === "Perfect" ? "perfect" : "great")}>Share this moment</button>
+          )}
         </div>
       )}
     </Modal>

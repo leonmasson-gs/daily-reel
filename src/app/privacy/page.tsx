@@ -16,7 +16,7 @@ export default function Privacy() {
       <section className="section">
         <h2>What we keep</h2>
         <ul className="plain">
-          <li><b>Your age check.</b> We check your date of birth and throw it away. We do not store it.</li>
+          <li><b>Your age check.</b> You tap to say you are 18 or over (21 or over in the US). We do not ask for or store a date of birth.</li>
           <li><b>One cookie.</b> A random identifier called <code>dr_pid</code> remembers that you passed the age check and which spins you have used. It lasts a year and is only sent to this game.</li>
           <li><b>Your play.</b> Your spins, points, symbols and weekly tier, linked to that random identifier and not to your name.</li>
           <li><b>Your email, only if you give it.</b> Saved with your tick-box choice to receive reminders when your daily spins are ready.</li>

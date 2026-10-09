@@ -2,6 +2,8 @@ import type { Query } from "./db";
 import { config } from "./config";
 import { cryptoRng, spinOnce, tierFor, type SpinResult } from "./engine";
 import { featuredSymbol } from "./featured";
+import { boostForDay } from "./boosts";
+import { awardMissionIfDone, type Mission } from "./missions";
 import { allowance, ownedSymbols, weekPoints, weekTrophies } from "./game";
 import { playDate, weekStart } from "./dates";
 
@@ -19,13 +21,14 @@ export type SpinOutcome =
       trophy: boolean;
       grandReached: boolean;
       bonusRound: boolean;
+      missionDone: Mission | null;
     };
 
 /**
  * One spin, inside a transaction the caller provides.
  * `draw` is injectable so tests can force a result. Production always uses the default.
  */
-export async function performSpin(q: Query, playerId: string, draw: () => SpinResult = () => spinOnce(cryptoRng, featuredSymbol(playDate()))): Promise<SpinOutcome> {
+export async function performSpin(q: Query, playerId: string, draw: () => SpinResult = () => spinOnce(cryptoRng, featuredSymbol(playDate()), boostForDay(playDate()).spec)): Promise<SpinOutcome> {
   const players = await q<{ invited_by: string | null }>("select invited_by from players where id = $1", [playerId]);
   if (!players.length) return { kind: "no_player" };
 
@@ -72,6 +75,9 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
     if (rows.length) newSets.push({ id: s.id, name: s.name, points: s.points });
   }
 
+  // The day's mission pays once, the first time it is complete.
+  const missionDone = await awardMissionIfDone(q, playerId);
+
   const after = await weekPoints(q, playerId, week);
   const t0 = tierFor(before).current;
   const t1 = tierFor(after).current;
@@ -82,5 +88,5 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
   const trophiesAfter = trophiesBefore + (trophy ? 1 : 0);
   const grandReached = trophiesBefore < config.trophies.needed && trophiesAfter >= config.trophies.needed;
 
-  return { kind: "ok", spin, isBonus, granted, inviter, newSets, tierUp, trophy, grandReached, bonusRound: trophy };
+  return { kind: "ok", spin, isBonus, granted, inviter, newSets, tierUp, trophy, grandReached, bonusRound: trophy, missionDone };
 }

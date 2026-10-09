@@ -73,6 +73,10 @@ export async function getBoard(q: Query, me: string) {
     `select player_id, sum(points)::int as n from set_awards where week_start = $${ids.length + 1} and player_id in (${list}) group by player_id`,
     [...ids, week],
   );
+  const missionPts = await q<{ player_id: string; n: number }>(
+    `select player_id, sum(points)::int as n from mission_awards where week_start = $${ids.length + 1} and player_id in (${list}) group by player_id`,
+    [...ids, week],
+  );
   const trophies = await q<{ player_id: string; n: number }>(
     `select player_id, count(*)::int as n from spins where week_start = $${ids.length + 1} and outcome = 'triple' and player_id in (${list}) group by player_id`,
     [...ids, week],
@@ -91,7 +95,7 @@ export async function getBoard(q: Query, me: string) {
     const nickname = await ensureNickname(q, id);
     const you = id === me;
     if (!you && hiddenIds.has(id)) return { nickname: "Private friend", you: false, hidden: true };
-    const points = (spinPts.find((r) => r.player_id === id)?.n ?? 0) + (setPts.find((r) => r.player_id === id)?.n ?? 0);
+    const points = (spinPts.find((r) => r.player_id === id)?.n ?? 0) + (setPts.find((r) => r.player_id === id)?.n ?? 0) + (missionPts.find((r) => r.player_id === id)?.n ?? 0);
     const mine = new Set(found.filter((r) => r.player_id === id).map((r) => r.symbol));
     return {
       nickname, you, hidden: false,

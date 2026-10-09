@@ -1,4 +1,5 @@
 import raw from "../../config/reel.json";
+import { resolveSpin } from "./resolve";
 
 export type Symbol = (typeof raw.symbols)[number];
 export const config = raw;
@@ -14,16 +15,16 @@ export function publishedOdds() {
     icon: s.icon,
     rarity: s.rarity,
     points: s.points,
+    wild: (s as { wild?: boolean }).wild === true,
     chancePerReel: s.weight / totalWeight,
   }));
-  const triple = probs.reduce((n, p) => n + p.chancePerReel ** 3, 0);
-  // exactly two of the same symbol across three reels
-  const pair = probs.reduce((n, p) => n + 3 * p.chancePerReel ** 2 * (1 - p.chancePerReel), 0);
-  return {
-    symbols: probs,
-    triple,
-    pair,
-    none: 1 - triple - pair,
-    multipliers: config.multipliers,
-  };
+  // Try every one of the possible three-reel combinations, score each with the real rules (a Wild stands in for the best
+  // symbol), and add up how likely each result is. Exact, not estimated.
+  let triple = 0, pair = 0, none = 0;
+  for (const a of probs) for (const b of probs) for (const c of probs) {
+    const p = a.chancePerReel * b.chancePerReel * c.chancePerReel;
+    const outcome = resolveSpin([a.id, b.id, c.id]).outcome;
+    if (outcome === "triple") triple += p; else if (outcome === "pair") pair += p; else none += p;
+  }
+  return { symbols: probs, triple, pair, none, multipliers: config.multipliers };
 }

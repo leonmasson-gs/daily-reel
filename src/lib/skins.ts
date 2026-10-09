@@ -57,6 +57,7 @@ const TGB: Skin = {
     gem: { name: "Gloves", art: "gloves" },
     crown: { name: "Armband", art: "armband" },
     "golden-reel": { name: "Golden ball", art: "goldball" },
+    wild: { name: "Wildcard", art: "wildcard" },
   },
   rarity: { Common: "#9AA3BA", Rare: "#F4F5F8", Epic: "#F5C300", Legendary: "#FFD93D" },
   medal: { bronze: "#C98A4B", silver: "#C9CED8", gold: "#F5C300", platinum: "#9FD0FF" },

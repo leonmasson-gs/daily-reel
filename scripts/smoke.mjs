@@ -60,8 +60,8 @@ r = await c.call("/api/spin", "POST");
 expect("fourth spin is refused (429) with a reset time", r.status === 429 && !!r.json.resetsAt, r.status);
 const st = (await c.call("/api/state")).json.player;
 expect("limit survives a reload (state still 0 left)", st.spins.remaining === 0 && st.today.length === 3);
-const pointsSum = results.reduce((n, x) => n + x.json.result.points + (x.json.newSets ?? []).reduce((m, s) => m + s.points, 0), 0);
-expect("weekly points equal spin points plus any set bonuses", st.week.points === pointsSum, [st.week.points, pointsSum]);
+const pointsSum = results.reduce((n, x) => n + x.json.result.points + (x.json.newSets ?? []).reduce((m, s) => m + s.points, 0) + (x.json.missionDone?.points ?? 0) + (x.json.bonusRound ? 0 : 0), 0);
+expect("weekly points equal spin points plus any set bonuses and the daily mission", st.week.points === pointsSum, [st.week.points, pointsSum]);
 expect("spin response carries newSets and tierUp", results.every((x) => Array.isArray(x.json.newSets) && "tierUp" in x.json));
 expect("state lists the four sets", st.sets.length === 4 && st.sets.every((s) => s.total >= 2));
 expect("today counts as a day played", st.week.daysPlayed.includes(st.week.today) && st.week.daysPlayed.length === 1, st.week.daysPlayed);
@@ -250,6 +250,48 @@ expect("invite page title mentions the friend invite", html.includes("A friend i
   const c1 = await cardBytes(q0), c2 = await cardBytes(q0 + "&skin=tgb"), c3 = await cardBytes(q0 + "&skin=not-a-skin");
   expect("the Tom Garratt Bets card is a PNG and looks different from the default", c2.s === 200 && c2.b.slice(0, 4).toString("hex") === "89504e47" && !c1.b.equals(c2.b), [c1.b.length, c2.b.length]);
   expect("an unknown skin falls back to the default card", c3.s === 200 && c3.b.equals(c1.b));
+}
+
+// the Wild, boosts, missions, the enjoyment tap, the leaderboard and moment cards
+{
+  expect("the Wild is a symbol on the reels and is marked in the published odds", cfg.odds.symbols.some((x) => x.id === "wild" && x.wild === true && x.rarity === "Legendary"), cfg.odds.symbols.map((x) => x.id));
+  expect("published odds add up to exactly 100%", Math.abs(cfg.odds.triple + cfg.odds.pair + cfg.odds.none - 1) < 1e-9);
+  const np = new Client(); await np.call("/api/age-gate", "POST", { dob: ADULT });
+  const nst = (await np.call("/api/state")).json.player;
+  expect("state carries today's boost and mission", typeof nst.boost?.label === "string" && typeof nst.mission?.title === "string" && nst.mission.done === false && nst.mission.points > 0, [nst.boost, nst.mission]);
+  const sp = await np.call("/api/spin", "POST");
+  expect("a spin result lists the symbols as scored and any mission completed", Array.isArray(sp.json.result.resolved) && sp.json.result.resolved.length === 3 && "missionDone" in sp.json, sp.json.result);
+  expect("the leaderboard needs an age check (401)", (await new Client().call("/api/leaderboard")).status === 401);
+  const lb = (await np.call("/api/leaderboard")).json;
+  expect("the leaderboard shows nicknames and no email or id", Array.isArray(lb.top) && lb.top.length >= 1 && !JSON.stringify(lb).includes("@") && lb.top.every((r) => /^[A-Z][a-z]+ [A-Z][a-z]+ \d{2}$/.test(r.nickname)), lb.top[0]);
+  expect("the leaderboard knows where you are", lb.me && lb.me.rank >= 1 && lb.total >= 1, lb.me);
+  const hider = new Client(); await hider.call("/api/age-gate", "POST", { dob: ADULT }); await hider.call("/api/spin", "POST");
+  await hider.call("/api/friends/visibility", "POST", { visible: false });
+  const lb2 = (await np.call("/api/leaderboard")).json;
+  const hnick = (await hider.call("/api/friends")).json.me.nickname;
+  expect("a player who hides is left out of the list", !lb2.top.some((r) => r.nickname === hnick), hnick);
+  expect("a bad enjoyment tap is refused (400)", (await np.call("/api/enjoyment", "POST", { score: 9 })).status === 400);
+  expect("an enjoyment tap is accepted", (await np.call("/api/enjoyment", "POST", { score: 1 })).status === 200);
+  expect("the enjoyment tap needs an age check (401)", (await new Client().call("/api/enjoyment", "POST", { score: 1 })).status === 401);
+  const mc = async (q) => { const r = await fetch(BASE + "/api/card?" + q); return { s: r.status, b: Buffer.from(await r.arrayBuffer()) }; };
+  const m1 = await mc("kind=moment&m=perfect"), m2 = await mc("kind=moment&m=perfect&skin=tgb"), m3 = await mc("kind=moment&m=tier&tier=Gold"), m4 = await mc("kind=moment&m=<script>");
+  expect("moment cards are PNGs", [m1, m2, m3, m4].every((m) => m.s === 200 && m.b.slice(0, 4).toString("hex") === "89504e47"));
+  expect("a moment card follows the skin", !m1.b.equals(m2.b));
+  expect("a made-up moment cannot put its own words on a card", m4.b.equals((await mc("kind=moment&m=triple")).b));
+}
+
+// the one-tap age confirmation
+{
+  const yes = new Client(), no = new Client();
+  const ry = await yes.call("/api/age-gate", "POST", { over: true });
+  expect("tapping 'I am over' lets a player in and sets the cookie", ry.status === 200 && !!yes.cookie, ry.status);
+  const rn = await no.call("/api/age-gate", "POST", { over: false });
+  expect("tapping 'I am under' is refused with the age in the message and no cookie", rn.status === 403 && /18/.test(rn.json.message) && !no.cookie, rn.json);
+  const rus = await new Client().call("/api/age-gate", "POST", { over: false }, { "x-vercel-ip-country": "US" });
+  expect("from the US the refusal says 21", rus.status === 403 && /21/.test(rus.json.message), rus.json);
+  expect("an empty age request is refused (400)", (await new Client().call("/api/age-gate", "POST", {})).status === 400);
+  expect("a made-up answer is refused (400)", (await new Client().call("/api/age-gate", "POST", { over: "yes" })).status === 400);
+  expect("the invite code still works with the one-tap check", (await new Client().call("/api/age-gate", "POST", { over: true, ref: "zzzzzz" })).status === 200);
 }
 
 // admin stats are locked

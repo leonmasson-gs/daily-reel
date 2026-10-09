@@ -41,6 +41,7 @@ export async function POST() {
       trophy: result.trophy,
       grandReached: result.grandReached,
       bonusRound: result.bonusRound,
+      missionDone: result.missionDone,
       state,
     });
   } catch (e: any) {

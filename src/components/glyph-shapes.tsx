@@ -86,6 +86,18 @@ export function GlyphShapes({ id, c }: { id: string; c: string }) {
           <rect x="38" y="22" width="6" height="20" rx="3" fill={INK} fillOpacity=".6" />
         </>
       );
+    case "wild":
+    case "wildcard": {
+      const tilt = id === "wildcard" ? "rotate(-9 32 32)" : undefined;
+      return (
+        <g transform={tilt}>
+          <rect x="12" y="5" width="40" height="54" rx="8" fill={c} />
+          <rect x="17" y="10" width="30" height="44" rx="5" fill="none" stroke={INK} strokeOpacity=".3" strokeWidth="2" />
+          <path d="M20 22 L26 44 L32 29 L38 44 L44 22" fill="none" stroke={INK} strokeOpacity=".7" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M22 13 L23.6 16.4 L27 18 L23.6 19.6 L22 23 L20.4 19.6 L17 18 L20.4 16.4 Z" fill={INK} fillOpacity=".4" transform="scale(.6) translate(15 5)" />
+        </g>
+      );
+    }
     // ---- football set (Tom Garratt Bets skin) ----
     case "whistle":
       return (

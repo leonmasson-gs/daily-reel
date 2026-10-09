@@ -2,6 +2,8 @@ import { config, publishedOdds, totalWeight } from "../src/lib/config";
 import { spinOnce, tierFor, scoreSpin } from "../src/lib/engine";
 import { advertDisclosure } from "../src/lib/advert";
 import { featuredSymbol } from "../src/lib/featured";
+import { boostForDay } from "../src/lib/boosts";
+import { missionFor } from "../src/lib/missions";
 import { bonusFor } from "../src/lib/bonus";
 import { SKINS } from "../src/lib/skins";
 import { readFileSync } from "node:fs";
@@ -87,8 +89,8 @@ eq("everyone else needs to be 18", [minAgeFor("GB"), minAgeFor("ie"), minAgeFor(
 eq("the featured symbol is the same all day", featuredSymbol("2026-10-09") === featuredSymbol("2026-10-09"), true);
 const feats = new Set<string>(); let legendary = false;
 for (let d = 0; d < 700; d++) { const f = featuredSymbol(new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10)); feats.add(f); if (f === "golden-reel") legendary = true; }
-eq("the featured symbol is never the Legendary one", legendary, false);
-eq("over time every other symbol gets a turn", feats.size, config.symbols.length - 1);
+eq("the featured symbol is never a Legendary one (the Golden Reel or the Wild)", [...feats].some((id) => config.symbols.find((x) => x.id === id)?.rarity === "Legendary"), false);
+eq("over time every other symbol gets a turn", feats.size, config.symbols.filter((x) => x.rarity !== "Legendary").length);
 eq("a featured symbol counts double in the base points", scoreSpin(["star", "cherry", "bell"], "star").points, (pts("star") * 2 + pts("cherry") + pts("bell")));
 eq("featured hits are counted", scoreSpin(["star", "star", "bell"], "star").featuredHits, 2);
 eq("featured triple: doubled base, then the triple multiplier", scoreSpin(["star", "star", "star"], "star").points, pts("star") * 2 * 3 * config.multipliers.triple);
@@ -123,4 +125,38 @@ for (const sk of Object.values(SKINS)) {
   eq(`${sk.label}: the accent on the background passes for large text and controls (3:1)`, ratio(sk.card.accent, sk.card.bg) >= 3, true);
   eq(`${sk.label}: every symbol colour can be seen against the reel window (3:1)`, Object.values(sk.rarity).every((c) => ratio(c, sk.card.win) >= 3), true);
 }
+
+// --- the Wild stands in for the best symbol ---
+const P = (...ids: string[]) => scoreSpin(ids);
+eq("a Wild with two different symbols makes the better pair", P("wild", "gem", "cherry").points, (pts("gem") * 2 + pts("cherry")) * config.multipliers.pair);
+eq("the Wild becomes the symbol that scores most", P("wild", "gem", "cherry").resolved?.join(), "gem,gem,cherry");
+eq("two Wilds and a symbol make a triple of that symbol", P("wild", "wild", "crown").points, pts("crown") * 3 * config.multipliers.triple);
+eq("a Wild with a pair makes a triple", P("wild", "star", "star").outcome, "triple");
+eq("three Wilds are a triple of Wilds", P("wild", "wild", "wild").points, pts("wild") * 3 * config.multipliers.triple);
+eq("a Wild next to nothing matching is still a pair", P("wild", "cherry", "bell").outcome, "pair");
+eq("no Wild: nothing changes", P("cherry", "bell", "star").outcome, "none");
+eq("a Wild that stands in for the featured symbol earns the double", scoreSpin(["wild", "star", "bell"], "star").points, ((pts("star") * 2) * 2 + pts("bell")) * config.multipliers.pair);
+eq("the Wild is Legendary, so it is rare", config.symbols.find((x) => x.id === "wild")?.rarity, "Legendary");
+eq("odds still add up to exactly 100%", Math.abs(odds.triple + odds.pair + odds.none - 1) < 1e-12, true);
+eq("with a Wild, triples are more likely than without", odds.triple > odds.symbols.reduce((n, x) => n + x.chancePerReel ** 3, 0), true);
+
+// --- daily boosts only change points ---
+eq("pair power: pairs count x3", scoreSpin(["bell", "bell", "star"], undefined, { pairMult: 3 }).points, (pts("bell") * 2 + pts("star")) * 3);
+eq("triple surge: triples count x7", scoreSpin(["cherry", "cherry", "cherry"], undefined, { tripleMult: 7 }).points, pts("cherry") * 3 * 7);
+eq("rare bonus: each Rare or better adds 2 points", scoreSpin(["star", "cherry", "bell"], undefined, { rareBonus: 2 }).points, pts("star") + pts("cherry") + pts("bell") + 2);
+eq("a pair boost does not touch a spin with no pair", scoreSpin(["star", "cherry", "bell"], undefined, { pairMult: 3 }).points, pts("star") + pts("cherry") + pts("bell"));
+eq("the boost is the same all day", boostForDay("2026-10-09").id === boostForDay("2026-10-09").id, true);
+const boostsSeen = new Set<string>(); for (let d = 0; d < 400; d++) boostsSeen.add(boostForDay(new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10)).id);
+eq("every boost in the rotation turns up", boostsSeen.size, config.boosts.rotation.length);
+(config.boosts.matchdays as Record<string, string>)["2030-01-01"] = "triple-surge";
+eq("a match day overrides the rotation", boostForDay("2030-01-01").id, "triple-surge");
+delete (config.boosts.matchdays as Record<string, string>)["2030-01-01"];
+
+// --- daily missions ---
+eq("the mission is the same all day", missionFor("2026-10-09").id === missionFor("2026-10-09").id, true);
+const missionsSeen = new Set<string>(); let badSymbol = false;
+for (let d = 0; d < 400; d++) { const m = missionFor(new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10)); missionsSeen.add(m.id); if (m.symbol && (config.symbols.find((x) => x.id === m.symbol)?.rarity === "Legendary")) badSymbol = true; }
+eq("every mission turns up", missionsSeen.size, config.missions.list.length);
+eq("a 'land a symbol' mission never asks for a Legendary symbol", badSymbol, false);
+eq("a mission only ever pays a few points", config.missions.list.every((m) => m.points <= 10), true);
 process.exit(ok ? 0 : 1);

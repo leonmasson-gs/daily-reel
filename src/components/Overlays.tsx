@@ -80,7 +80,7 @@ export function Intro({ onDone, onSkip }: { onDone: () => void; onSkip: () => vo
   );
 }
 
-export function TierUp({ from, to, pointsToNext, nextName, onClose }: { from: string; to: string; pointsToNext: number; nextName: string | null; onClose: () => void }) {
+export function TierUp({ from, to, pointsToNext, nextName, onClose, onShare }: { from: string; to: string; pointsToNext: number; nextName: string | null; onClose: () => void; onShare?: () => void }) {
   return (
     <Modal title={`${to} reached`} onClose={onClose}>
       <div className="center">
@@ -89,11 +89,12 @@ export function TierUp({ from, to, pointsToNext, nextName, onClose }: { from: st
         <p>You moved up from {from} this week.{nextName ? ` ${pointsToNext} more points to reach ${nextName}.` : " That is the top tier."}</p>
       </div>
       <button className="btn" onClick={onClose}>Continue</button>
+      {onShare && <button className="link" style={{ display: "block", margin: "8px auto 0" }} onClick={onShare}>Share this moment</button>}
     </Modal>
   );
 }
 
-export function GrandDialog({ trophies, onClose }: { trophies: number; onClose: () => void }) {
+export function GrandDialog({ trophies, onClose, onShare }: { trophies: number; onClose: () => void; onShare?: () => void }) {
   return (
     <Modal title="Grand tier reached" onClose={onClose}>
       <div className="center">
@@ -102,6 +103,7 @@ export function GrandDialog({ trophies, onClose }: { trophies: number; onClose: 
         <p>{trophies} trophies this week. This is a preview: nothing is awarded in this version.</p>
       </div>
       <button className="btn" onClick={onClose}>Continue</button>
+      {onShare && <button className="link" style={{ display: "block", margin: "8px auto 0" }} onClick={onShare}>Share this moment</button>}
     </Modal>
   );
 }

@@ -106,6 +106,15 @@ create table if not exists set_awards (
   created_at timestamptz not null default now(),
   unique (player_id, set_id)
 );
+create table if not exists mission_awards (
+  player_id uuid not null references players(id),
+  play_date text not null,
+  week_start text not null,
+  mission_id text not null,
+  points int not null,
+  created_at timestamptz not null default now(),
+  primary key (player_id, play_date)
+);
 create table if not exists events (
   id bigserial primary key,
   player_id uuid,

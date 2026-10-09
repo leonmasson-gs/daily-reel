@@ -15,7 +15,7 @@ type Stats = {
   daily: { date: string; active: number; joined: number }[];
   rewards: { viewers: number; notifyOptIns: number; viewersByRegion: { region: string; players: number }[]; interest: { rung: string; label: string; players: number }[] };
   daysPlayedThisWeek: { days: number; players: number }[];
-  progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; trophyPlayers: number; grandPlayers: number; bonusRounds: { label: string; n: number }[]; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
+  progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; trophyPlayers: number; grandPlayers: number; enjoyment: { good: number; okay: number; notGood: number }; missionsDoneThisWeek: number; bonusRounds: { label: string; n: number }[]; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
   fairness: { spins: number; pair: { observed: number | null; published: number }; triple: { observed: number | null; published: number }; reels: { name: string; observed: number | null; published: number }[] };
   guardrails: { agePassed: number; ageBlocked: number; oddsViewed: number };
 };
@@ -201,6 +201,8 @@ export default function AdminStats() {
             <tr><td>Intro completed / skipped</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.introCompleted} / {stats.progress.introSkipped}</td></tr>
             <tr><td>Players with a trophy this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.trophyPlayers}</td></tr>
             <tr><td>Players at the Grand tier this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.grandPlayers}</td></tr>
+            <tr><td>"How was today?" taps</td><td className="tnum" style={{ textAlign: "right" }}>{(() => { const e = stats.progress.enjoyment; const t = e.good + e.okay + e.notGood; return t ? `${e.good} good, ${e.okay} okay, ${e.notGood} not for me (${Math.round((e.good / t) * 100)}% good)` : "none yet"; })()}</td></tr>
+            <tr><td>Daily missions completed this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.missionsDoneThisWeek}</td></tr>
             <tr><td>Bonus rounds played</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.bonusRounds.length ? stats.progress.bonusRounds.map((b) => `${b.label} ${b.n}`).join(", ") : "none yet"}</td></tr>
             <tr><td>Tier-ups</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.tierUps}</td></tr>
             <tr><td>Weekly recaps viewed</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.recapsViewed}</td></tr>

@@ -37,7 +37,7 @@ function tone(freq: number, start: number, dur: number, gain = 0.05, type: Oscil
   o.start(t); o.stop(t + dur + 0.02);
 }
 
-export type SoundKind = "tick" | "stop" | "match" | "set" | "tier";
+export type SoundKind = "tick" | "stop" | "match" | "set" | "tier" | "triple" | "perfect" | "mission" | "wild";
 export function playSound(kind: SoundKind) {
   switch (kind) {
     case "tick": tone(880, 0, 0.06, 0.04); break;
@@ -45,5 +45,10 @@ export function playSound(kind: SoundKind) {
     case "match": tone(523, 0, 0.14); tone(659, 0.1, 0.18); break;
     case "set": tone(587, 0, 0.12); tone(740, 0.1, 0.12); tone(880, 0.2, 0.2); break;
     case "tier": tone(523, 0, 0.14); tone(659, 0.12, 0.14); tone(784, 0.24, 0.14); tone(1047, 0.36, 0.3); break;
+    // a fuller chord for a triple, a bright run for a perfect stop, a soft chime for a mission, a shimmer for a Wild
+    case "triple": tone(523, 0, 0.4, 0.035); tone(659, 0, 0.4, 0.035); tone(784, 0, 0.4, 0.035); tone(1047, 0.22, 0.35, 0.04); break;
+    case "perfect": tone(784, 0, 0.1); tone(988, 0.08, 0.1); tone(1319, 0.16, 0.28); break;
+    case "mission": tone(659, 0, 0.1, 0.04); tone(988, 0.1, 0.22, 0.04); break;
+    case "wild": tone(1175, 0, 0.08, 0.03, "triangle"); tone(1568, 0.06, 0.08, 0.03, "triangle"); tone(2093, 0.12, 0.2, 0.03, "triangle"); break;
   }
 }

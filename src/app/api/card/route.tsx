@@ -60,8 +60,43 @@ export async function GET(req: Request) {
   const host = url.host;
   const skin = skinById(url.searchParams.get("skin"));
   const k = skin.card;
-  const kind = url.searchParams.get("kind") === "invite" ? "invite" : "week";
+  const kindParam = url.searchParams.get("kind");
+  const kind = kindParam === "invite" ? "invite" : kindParam === "moment" ? "moment" : "week";
   const footer = "Free to play. 18+ (21+ where US rules require). No stake, no prizes.";
+
+  if (kind === "moment") {
+    // Only whitelisted moments are drawn, never free text from the address.
+    const m = ["perfect", "great", "triple", "tier", "grand"].includes(url.searchParams.get("m") ?? "") ? (url.searchParams.get("m") as string) : "triple";
+    const tier = (config.tiers.find((t) => t.name.toLowerCase() === (url.searchParams.get("tier") ?? "").toLowerCase()) ?? config.tiers[0]).name;
+    const band = config.bonus.bands.find((x) => x.label.toLowerCase() === m);
+    const penalty = skin.bonus.marker === "ball";
+    const head = m === "perfect" ? (penalty ? "Perfect penalty" : "Perfect stop") : m === "great" ? (penalty ? "Great penalty" : "Great stop") : m === "triple" ? "Triple match" : m === "tier" ? `${tier} reached` : "Grand tier reached";
+    const sub = band ? `+${band.points} points in the bonus round` : m === "triple" ? "Three of a kind. Trophy earned." : m === "tier" ? "On my way up this week" : "Three trophies in a week";
+    return new ImageResponse(
+      (
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%", height: "100%", background: k.bg, padding: 64, border: `12px solid ${k.accent}` }}>
+          <Brand size={48} skin={skin} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            {m === "tier" ? <Medal tier={tier} size={340} skin={skin} /> : (
+              <svg width="340" height="340" viewBox="0 0 64 64">
+                <path d="M18 8 H46 V26 C46 36 40 42 32 42 C24 42 18 36 18 26 Z" fill={k.accent} />
+                <path d="M18 14 H9 C9 26 13 30 19 31 M46 14 H55 C55 26 51 30 45 31" fill="none" stroke={k.accent} strokeWidth="4" strokeLinecap="round" />
+                <rect x="29" y="42" width="6" height="9" fill={k.accent} />
+                <rect x="21" y="51" width="22" height="6" rx="2" fill={k.accent} />
+              </svg>
+            )}
+            <div style={{ display: "flex", fontSize: 96, fontWeight: 800, color: k.text, marginTop: 10, textAlign: "center" }}>{head}</div>
+            <div style={{ display: "flex", fontSize: 44, color: k.accent, fontWeight: 700, marginTop: 8 }}>{sub}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 26, color: k.muted }}>
+            <div style={{ display: "flex" }}>{footer}</div>
+            <div style={{ display: "flex", color: k.accent }}>{host}</div>
+          </div>
+        </div>
+      ),
+      { width: 1080, height: 1080, headers: { "Cache-Control": "public, max-age=300" } },
+    );
+  }
 
   if (kind === "invite") {
     const showcase = ["cherry", "star", "crown"];
@@ -113,7 +148,7 @@ export async function GET(req: Request) {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={{ display: "flex", background: k.panel, borderRadius: 30, padding: 20 }}>
             {config.symbols.map((s, i) => (
-              <div key={s.id} style={{ display: "flex", marginLeft: i === 0 ? 0 : 12 }}><Symbol id={s.id} size={92} on={found.has(s.id)} skin={skin} /></div>
+              <div key={s.id} style={{ display: "flex", marginLeft: i === 0 ? 0 : 12 }}><Symbol id={s.id} size={84} on={found.has(s.id)} skin={skin} /></div>
             ))}
           </div>
           <div style={{ display: "flex", fontSize: 32, color: k.text, marginTop: 24 }}>

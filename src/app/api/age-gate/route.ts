@@ -14,14 +14,22 @@ export async function POST(req: Request) {
   const dob = typeof body.dob === "string" ? body.dob : "";
   const ref = typeof body.ref === "string" ? body.ref.slice(0, 16) : "";
 
-  const age = ageOn(dob);
-  if (age === null) {
-    return NextResponse.json({ error: "invalid_dob", message: "Please enter a valid date of birth." }, { status: 400 });
-  }
-  // The date of birth is checked and then discarded. We never store it.
   // 18 in most places, 21 for visitors connecting from the US (state rules vary, so the stricter age is used).
   const minAge = minAgeFor(req.headers.get("x-vercel-ip-country"));
-  if (age < minAge) {
+
+  // The normal route is a single tap: "I am 18 or over" or "I am under 18". It is a declaration, not a verified check.
+  // A date of birth is still accepted from older callers, checked, and thrown away. It is never stored.
+  let underAge: boolean;
+  if (typeof body.over === "boolean") {
+    underAge = body.over === false;
+  } else {
+    const age = ageOn(dob);
+    if (age === null) {
+      return NextResponse.json({ error: "invalid_dob", message: "Please confirm your age." }, { status: 400 });
+    }
+    underAge = age < minAge;
+  }
+  if (underAge) {
     await logEvent(null, "age_gate_blocked"); // counted only, no identity kept
     return NextResponse.json(
       { error: "under_age", message: `You must be ${minAge} or over to play.` },

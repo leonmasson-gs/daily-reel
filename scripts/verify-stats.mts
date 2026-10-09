@@ -1,3 +1,4 @@
+import { config } from "../src/lib/config";
 // Checks the admin numbers against data where the right answers are known.
 process.env.ALLOW_MEMORY_DB = "1";
 import { randomUUID } from "node:crypto";
@@ -61,7 +62,7 @@ ok("daily activity: 1 active two days ago, 1 yesterday, 1 today", s.daily[11].ac
 ok("progress: set completions and intro events", s.progress.sets.find((x) => x.name === "Everyday trio")?.completed === 1 && s.progress.introCompleted === 2, s.progress);
 ok("tier split covers this week's players only", s.progress.tiersThisWeek.reduce((a, t) => a + t.players, 0) >= 1);
 ok("fairness: observed pair and triple rates", near(s.fairness.pair.observed, 0.2) && near(s.fairness.triple.observed, 0.2), s.fairness);
-ok("fairness: published odds shown alongside", s.fairness.reels.length === 8 && s.fairness.reels.every((r) => r.published > 0));
+ok("fairness: published odds shown alongside", s.fairness.reels.length === config.symbols.length && s.fairness.reels.every((r) => r.published > 0));
 ok("guardrails: blocked under-18 attempts are counted", s.guardrails.ageBlocked === 1, s.guardrails);
 ok("rewards: viewers counted once per player", s.rewards.viewers === 2, s.rewards);
 ok("rewards: interest counts distinct players per rung", s.rewards.interest.find((r) => r.rung === "draw")?.players === 2 && s.rewards.interest.find((r) => r.rung === "regular")?.players === 1 && s.rewards.interest.find((r) => r.rung === "partner")?.players === 0, s.rewards.interest);
