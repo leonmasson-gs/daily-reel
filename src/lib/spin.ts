@@ -1,6 +1,7 @@
 import type { Query } from "./db";
 import { config } from "./config";
-import { spinOnce, tierFor, type SpinResult } from "./engine";
+import { cryptoRng, spinOnce, tierFor, type SpinResult } from "./engine";
+import { featuredSymbol } from "./featured";
 import { allowance, ownedSymbols, weekPoints, weekTrophies } from "./game";
 import { playDate, weekStart } from "./dates";
 
@@ -17,13 +18,14 @@ export type SpinOutcome =
       tierUp: { from: string; to: string } | null;
       trophy: boolean;
       grandReached: boolean;
+      bonusRound: boolean;
     };
 
 /**
  * One spin, inside a transaction the caller provides.
  * `draw` is injectable so tests can force a result. Production always uses the default.
  */
-export async function performSpin(q: Query, playerId: string, draw: () => SpinResult = spinOnce): Promise<SpinOutcome> {
+export async function performSpin(q: Query, playerId: string, draw: () => SpinResult = () => spinOnce(cryptoRng, featuredSymbol(playDate()))): Promise<SpinOutcome> {
   const players = await q<{ invited_by: string | null }>("select invited_by from players where id = $1", [playerId]);
   if (!players.length) return { kind: "no_player" };
 
@@ -80,5 +82,5 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
   const trophiesAfter = trophiesBefore + (trophy ? 1 : 0);
   const grandReached = trophiesBefore < config.trophies.needed && trophiesAfter >= config.trophies.needed;
 
-  return { kind: "ok", spin, isBonus, granted, inviter, newSets, tierUp, trophy, grandReached };
+  return { kind: "ok", spin, isBonus, granted, inviter, newSets, tierUp, trophy, grandReached, bonusRound: trophy };
 }

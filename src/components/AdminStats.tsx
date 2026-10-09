@@ -15,7 +15,7 @@ type Stats = {
   daily: { date: string; active: number; joined: number }[];
   rewards: { viewers: number; notifyOptIns: number; viewersByRegion: { region: string; players: number }[]; interest: { rung: string; label: string; players: number }[] };
   daysPlayedThisWeek: { days: number; players: number }[];
-  progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; trophyPlayers: number; grandPlayers: number; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
+  progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; trophyPlayers: number; grandPlayers: number; bonusRounds: { label: string; n: number }[]; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
   fairness: { spins: number; pair: { observed: number | null; published: number }; triple: { observed: number | null; published: number }; reels: { name: string; observed: number | null; published: number }[] };
   guardrails: { agePassed: number; ageBlocked: number; oddsViewed: number };
 };
@@ -55,6 +55,12 @@ export default function AdminStats() {
   const [key, setKey] = useState("");
   const [err, setErr] = useState("");
   const [tool, setTool] = useState("");
+  const [anticipation, setAnticipation] = useState(false);
+  useEffect(() => { try { setAnticipation(window.localStorage.getItem("dr_demo_anticipation") === "1"); } catch { /* off */ } }, []);
+  function toggleAnticipation(on: boolean) {
+    setAnticipation(on);
+    try { window.localStorage.setItem("dr_demo_anticipation", on ? "1" : "0"); } catch { /* not saved */ }
+  }
 
   async function resetSpins() {
     setTool("Working…");
@@ -138,6 +144,14 @@ export default function AdminStats() {
         {tool && <div className="small" role="status" style={{ marginTop: 10, color: "var(--carolina)" }}>{tool}</div>}
       </div>
 
+      <div className="panel">
+        <h3>Demo option: anticipation on the third reel</h3>
+        <label className="check">
+          <input type="checkbox" checked={anticipation} onChange={(e) => toggleAnticipation(e.target.checked)} />
+          <span>When the first two symbols match, the third reel stops later. The result is the same and was already decided. <b>This is the "near miss on the third symbol" idea from the brief. It is off for every player and needs a responsible gambling and legal view before anyone outside the team sees it.</b> This switch only affects this browser.</span>
+        </label>
+      </div>
+
       <h2 style={{ margin: "18px 0 10px" }}>The five answers</h2>
       <div className="tiles">
         <Tile title="1. Enjoyable" big={a.enjoyable.spinsPerPlayer == null ? "–" : `${num1(a.enjoyable.spinsPerPlayer)} spins`} line={`per player. ${pct(a.enjoyable.fullDayShare)} of player-days used all three spins.`}>
@@ -187,6 +201,7 @@ export default function AdminStats() {
             <tr><td>Intro completed / skipped</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.introCompleted} / {stats.progress.introSkipped}</td></tr>
             <tr><td>Players with a trophy this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.trophyPlayers}</td></tr>
             <tr><td>Players at the Grand tier this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.grandPlayers}</td></tr>
+            <tr><td>Bonus rounds played</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.bonusRounds.length ? stats.progress.bonusRounds.map((b) => `${b.label} ${b.n}`).join(", ") : "none yet"}</td></tr>
             <tr><td>Tier-ups</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.tierUps}</td></tr>
             <tr><td>Weekly recaps viewed</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.recapsViewed}</td></tr>
           </tbody></table>

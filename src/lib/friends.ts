@@ -66,7 +66,7 @@ export async function getBoard(q: Query, me: string) {
   const list = marks(1, ids.length);
 
   const spinPts = await q<{ player_id: string; n: number }>(
-    `select player_id, sum(points)::int as n from spins where week_start = $${ids.length + 1} and player_id in (${list}) group by player_id`,
+    `select player_id, sum(points + bonus_points)::int as n from spins where week_start = $${ids.length + 1} and player_id in (${list}) group by player_id`,
     [...ids, week],
   );
   const setPts = await q<{ player_id: string; n: number }>(

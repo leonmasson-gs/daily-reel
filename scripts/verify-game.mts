@@ -240,5 +240,57 @@ async function spin(id: string, draw: () => SpinResult) {
   ok("someone who hides still sees their own entry", b2!.me.hidden === false && b2!.me.found!.includes("star"));
 }
 
+// --- the bonus round ---
+{
+  const { claimBonus } = await import("../src/lib/bonus");
+  const { featuredSymbol } = await import("../src/lib/featured");
+  const claim = (p: string, input: { accuracy?: number; skip?: boolean }) => db.tx((q) => claimBonus(q, p, input));
+
+  const a = await newPlayer();
+  const t = await spin(a, force("cherry", "cherry", "cherry"));
+  ok("a triple offers a bonus round", t.bonusRound === true);
+  const n = await spin(a, force("cherry", "bell", "lemon"));
+  ok("no other result offers one", n.bonusRound === false);
+  const before = (await buildState(a))!.week.points;
+  const r = await claim(a, { accuracy: 0.95 });
+  ok("a perfect stop earns the Perfect bonus", r.kind === "ok" && r.label === "Perfect" && r.points === 20, r);
+  ok("the bonus points count towards the week", (await buildState(a))!.week.points === before + 20, [before, (await buildState(a))!.week.points]);
+  ok("a bonus round can only be claimed once", (await claim(a, { accuracy: 1 })).kind === "none");
+
+  const b = await newPlayer();
+  await spin(b, force("bell", "bell", "bell"));
+  const sk = await claim(b, { skip: true });
+  ok("the standard bonus is worth the stated skip points", sk.kind === "ok" && sk.points === 6 && sk.label === "Standard bonus", sk);
+
+  const c = await newPlayer();
+  await spin(c, force("lemon", "lemon", "lemon"));
+  const miss = await claim(c, { accuracy: 0.05 });
+  ok("a poor stop is a small consolation, never negative", miss.kind === "ok" && miss.label === "Miss" && miss.points >= 0, miss);
+
+  ok("a player with no triple has nothing to claim", (await claim(await newPlayer(), { accuracy: 1 })).kind === "none");
+
+  const d = await newPlayer();
+  await spin(d, force("star", "star", "star"));
+  await db.query("update spins set created_at = now() - interval '20 minutes' where player_id = $1", [d]);
+  ok("a bonus round expires after 15 minutes", (await claim(d, { accuracy: 1 })).kind === "none");
+
+  const e = await newPlayer();
+  const other = await newPlayer();
+  await spin(e, force("cherry", "cherry", "cherry"));
+  ok("one player cannot claim another player's bonus", (await claim(other, { accuracy: 1 })).kind === "none");
+
+  // a bonus can carry a player over a tier line
+  const f = await newPlayer();
+  const week = weekStart();
+  await db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,'2000-01-01',$2,99,'[\"cherry\",\"bell\",\"star\"]','none',100)", [f, week]);
+  await spin(f, force("cherry", "cherry", "cherry"));              // 100 + 15 = 115, still Bronze
+  const up = await claim(f, { skip: true });                       // + 6 = 121, Silver
+  ok("a bonus that crosses a tier line reports the tier-up", up.kind === "ok" && up.tierUp?.to === "Silver", up);
+
+  // the featured symbol is part of state
+  const st = await buildState(a);
+  ok("state tells the page today's featured symbol", st!.featured.id === featuredSymbol(playDate()) && st!.featured.multiplier === 2, st!.featured);
+}
+
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nAll rule checks passed");
 process.exit(failed ? 1 : 0);

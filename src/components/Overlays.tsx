@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RewardArt } from "./RewardArt";
+import { useSkin } from "./SkinContext";
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
@@ -44,17 +45,17 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   );
 }
 
-const MEDAL: Record<string, string> = { bronze: "#B07A45", silver: "#CFCBBF", gold: "#C88A2E", platinum: "#4DA7FF" };
-
 export function Medal({ tier }: { tier: string }) {
-  const c = MEDAL[tier.toLowerCase()] ?? "#C88A2E";
+  const skin = useSkin();
+  const c = skin.medal[tier.toLowerCase() as keyof typeof skin.medal] ?? skin.art.gold;
+  const { sky, gold, ink } = skin.art;
   return (
     <svg className="medal" viewBox="0 0 96 96" role="img" aria-label={`${tier} tier`}>
-      <path d="M30 4h14l8 28H38z" fill="#4DA7FF" opacity=".9" />
-      <path d="M66 4H52l-8 28h14z" fill="#C88A2E" opacity=".9" />
+      <path d="M30 4h14l8 28H38z" fill={sky} opacity=".9" />
+      <path d="M66 4H52l-8 28h14z" fill={gold} opacity=".9" />
       <circle cx="48" cy="60" r="32" fill={c} />
-      <circle cx="48" cy="60" r="23" fill="none" stroke="#081A31" strokeOpacity=".4" strokeWidth="3" />
-      <polygon points="48,45 52.6,55.4 63.9,56.1 55.3,63.5 58,74.4 48,68.5 38,74.4 40.7,63.5 32.1,56.1 43.4,55.4" fill="#081A31" fillOpacity=".5" />
+      <circle cx="48" cy="60" r="23" fill="none" stroke={ink} strokeOpacity=".4" strokeWidth="3" />
+      <polygon points="48,45 52.6,55.4 63.9,56.1 55.3,63.5 58,74.4 48,68.5 38,74.4 40.7,63.5 32.1,56.1 43.4,55.4" fill={ink} fillOpacity=".5" />
     </svg>
   );
 }

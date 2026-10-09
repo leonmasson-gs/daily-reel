@@ -1,9 +1,13 @@
-// Simple flat artwork for the sample rewards. All of it is placeholder.
-const GOLD = "#C88A2E", SKY = "#4DA7FF", INK = "#081A31", PANEL = "#225080", COPPER = "#B07A45", PAPER = "#F4F1EA";
+"use client";
+
+import { useSkin } from "./SkinContext";
+
+// Simple flat artwork for the sample rewards. All of it is placeholder. Colours come from the skin.
 
 export type ArtKind = "badge" | "gift" | "voucher" | "hamper" | "ticket" | "star" | "trophy";
 
 export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: number; label?: string }) {
+  const { gold: GOLD, sky: SKY, ink: INK, panel: PANEL, copper: COPPER, paper: PAPER } = useSkin().art;
   const common = { width: size, height: size, viewBox: "0 0 64 64", role: label ? "img" : "presentation", "aria-label": label, focusable: false } as const;
   switch (kind) {
     case "badge":

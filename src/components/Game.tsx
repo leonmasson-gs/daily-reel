@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Glyph } from "./Glyph";
 import { GrandDialog, Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
 import { Friends } from "./Friends";
 import { RewardArt } from "./RewardArt";
 import { advertDisclosure } from "@/lib/advert";
+import { SkinContext } from "./SkinContext";
+import { BonusRound } from "./Bonus";
+import { SKINS, defaultSkinId, skinById, type Skin } from "@/lib/skins";
 import { ShareDialog } from "./Share";
 import { ResponsibleFooter, type ResponsibleCfg } from "./ResponsibleFooter";
 import { RewardsScreen, RewardsTeaser } from "./Rewards";
@@ -17,6 +20,9 @@ type Cfg = {
   copy: { title: string; tagline: string; footer: string };
   minAge: number;
   minAgeUS: number;
+  skin: { default: string; allowSwitch: boolean };
+  featured: { multiplier: number };
+  bonus: { skipPoints: number; bands: { min: number; label: string; points: number }[] };
   reset: { hour: number; timeZone: string; label: string };
   trophies: { needed: number; tierLabel: string; note: string };
   tiers: { id: string; name: string; minPoints: number }[];
@@ -31,6 +37,7 @@ type Cfg = {
 };
 type Player = {
   inviteCode: string;
+  featured: { id: string; multiplier: number };
   emailSaved: boolean;
   rewardsNotify: boolean;
   rewards: { weeksRegular: number; weeksFull: number };
@@ -41,7 +48,7 @@ type Player = {
   week: { start: string; today: string; resetsAt: string; trophies: number; trophiesNeeded: number; grand: boolean; daysPlayed: string[]; points: number; tier: { id: string; name: string; minPoints: number }; nextTier: { name: string; minPoints: number } | null; pointsToNext: number };
 };
 type Tab = "play" | "collection" | "tier" | "friends" | "rewards";
-type SpinResult = { symbols: string[]; outcome: "triple" | "pair" | "none"; points: number; isBonus: boolean };
+type SpinResult = { symbols: string[]; outcome: "triple" | "pair" | "none"; points: number; isBonus: boolean; featuredHits?: number };
 
 const pct = (n: number) => (n * 100 < 1 ? (n * 100).toFixed(2) : (n * 100).toFixed(1)) + "%";
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -51,8 +58,39 @@ const track = (name: string, extra?: object) =>
 
 /* ------------------------------------------------------------------ */
 
+/** The look-only changes a skin makes to the settings: its name and tagline, and what the symbols are called. */
+function applySkin(cfg: Cfg, skin: Skin): Cfg {
+  return {
+    ...cfg,
+    copy: { ...cfg.copy, title: skin.title, tagline: skin.tagline },
+    odds: { ...cfg.odds, symbols: cfg.odds.symbols.map((s) => ({ ...s, name: skin.symbols[s.id]?.name ?? s.name })) },
+  };
+}
+
+function BrandMark({ skin }: { skin: Skin }) {
+  if (skin.brand.parts) return <><span className="b1">{skin.brand.parts[0]}</span><span className="b2">{skin.brand.parts[1]}</span></>;
+  return <><i aria-hidden />{skin.brand.name}</>;
+}
+
 export default function Game() {
-  const [cfg, setCfg] = useState<Cfg | null>(null);
+  const [cfgRaw, setCfg] = useState<Cfg | null>(null);
+  const [skinId, setSkinId] = useState<string>(defaultSkinId());
+  const skin = skinById(skinId);
+  // The skin changes how things look and what the symbols are called. It never changes a rule, an odd or a compliance line.
+  const cfg = useMemo(() => (cfgRaw ? applySkin(cfgRaw, skin) : null), [cfgRaw, skin]);
+  function chooseSkin(id: string) {
+    setSkinId(id);
+    document.documentElement.dataset.skin = id;
+    try { window.localStorage.setItem("dr_skin", id); } catch { /* not saved */ }
+    // If the address names a skin, keep it in step with what was chosen, so a reload does not undo the choice.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("skin")) { url.searchParams.set("skin", id); window.history.replaceState(window.history.state, "", url); }
+  }
+  useEffect(() => {
+    // The inline script in the layout has already set the attribute before paint. Here we just read the same choice.
+    const fromPage = document.documentElement.dataset.skin;
+    if (fromPage && SKINS[fromPage]) setSkinId(fromPage);
+  }, []);
   const [player, setPlayer] = useState<Player | null | undefined>(undefined); // undefined = loading
   const [tab, setTab] = useState<Tab>("play");
   const [sound, setSound] = useState(false);
@@ -65,6 +103,7 @@ export default function Game() {
   const [region, setRegionState] = useState("Other");
   const [minAge, setMinAge] = useState(18);
   const [grandUp, setGrandUp] = useState(false);
+  const [bonus, setBonus] = useState(false);
   function setRegion(r: string) {
     setRegionState(r);
     try { window.localStorage.setItem("dr_region", r); } catch { /* not saved */ }
@@ -189,13 +228,17 @@ export default function Game() {
   ];
 
   return (
+    <SkinContext.Provider value={skin}>
     <main className="app">
       <header className="top">
-        <h1 className="brand">
-          {player ? (
-            <button className="brandbtn" onClick={() => goTab("play")} aria-label={`${cfg.copy.title}. Go to the game`}><i aria-hidden />{cfg.copy.title}</button>
-          ) : (<><i aria-hidden />{cfg.copy.title}</>)}
-        </h1>
+        <div className="brandwrap">
+          <h1 className="brand">
+            {player ? (
+              <button className="brandbtn" onClick={() => goTab("play")} aria-label={`${skin.title}. Go to the game`}><BrandMark skin={skin} /></button>
+            ) : (<BrandMark skin={skin} />)}
+          </h1>
+          {skin.brand.eyebrow && <div className="eyebrow" aria-hidden>{skin.brand.eyebrow}</div>}
+        </div>
         {player && (
           <div className="tools">
             <button className="iconbtn" aria-pressed={sound} aria-label={sound ? "Sound on. Turn off" : "Sound off. Turn on"} onClick={toggleSound}>
@@ -234,7 +277,7 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} region={region} minAge={minAge} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} onBonus={() => setBonus(true)} region={region} minAge={minAge} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
           {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
           {tab === "friends" && (
@@ -258,6 +301,14 @@ export default function Game() {
         </>
       )}
 
+      {cfg.skin.allowSwitch && (
+        <div className="skinswitch" role="group" aria-label="Skin">
+          <span className="small muted">Skin</span>
+          {Object.values(SKINS).map((s) => (
+            <button key={s.id} className="pillbtn" aria-pressed={skinId === s.id} onClick={() => chooseSkin(s.id)}>{s.label}</button>
+          ))}
+        </div>
+      )}
       <ResponsibleFooter rg={cfg.responsible} region={region} />
 
       {sharing && player && (
@@ -273,15 +324,22 @@ export default function Game() {
           }}
         />
       )}
-      {!intro && !recap && !tierUp && grandUp && player && (
+      {!intro && !recap && !bonus && !tierUp && grandUp && player && (
         <GrandDialog trophies={player.week.trophies} onClose={() => setGrandUp(false)} />
+      )}
+      {bonus && !intro && !recap && player && (
+        <BonusRound
+          bands={cfg.bonus.bands} skipPoints={cfg.bonus.skipPoints} feel={feel}
+          onDone={(r) => { setBonus(false); if (r) { setPlayer(r.state as Player); if (r.tierUp) setTierUp(r.tierUp); } }}
+        />
       )}
       {intro && <Intro onDone={() => closeIntro(false)} onSkip={() => closeIntro(true)} />}
       {!intro && recap && <RecapDialog recap={recap} onClose={closeRecap} />}
-      {!intro && !recap && tierUp && player && (
+      {!intro && !recap && !bonus && tierUp && player && (
         <TierUp from={tierUp.from} to={tierUp.to} pointsToNext={player.week.pointsToNext} nextName={player.week.nextTier?.name ?? null} onClose={() => setTierUp(null)} />
       )}
     </main>
+    </SkinContext.Provider>
   );
 }
 
@@ -526,8 +584,8 @@ function Trophies({ week, grandLabel }: { week: Player["week"]; grandLabel: stri
 
 type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
-function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGrand, region, minAge, onOpenRewards, onNotify }: {
-  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void; onGrand: () => void;
+function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGrand, onBonus, region, minAge, onOpenRewards, onNotify }: {
+  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void; onGrand: () => void; onBonus: () => void;
   region: string; minAge: number; onOpenRewards: () => void; onNotify: () => Promise<string | null>;
 }) {
   const last = player.today.at(-1);
@@ -568,13 +626,20 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
     }
 
     const out = res.j.result as SpinResult;
+    // DEMO OPTION, OFF BY DEFAULT: when the first two reels match, the third takes longer to stop. The result was already
+    // decided and is the same either way. It is the "near miss on the third symbol" idea from the brief, and it can only be
+    // switched on from the stats page in this browser, because it needs a responsible gambling and legal view first.
+    let anticipate = false;
+    try { anticipate = window.localStorage.getItem("dr_demo_anticipation") === "1"; } catch { /* off */ }
+    const slowThird = anticipate && out.symbols[0] === out.symbols[1];
     await sleep(Math.max(0, 550 - (performance.now() - t0)));
     await Promise.all(
       reels.map((r, i) =>
-        sleep(i * 320).then(async () => {
-          await r.current?.stop(out.symbols[i], 900 + i * 220);
+        sleep(slowThird && i === 2 ? 1700 : i * 320).then(async () => {
+          await r.current?.stop(out.symbols[i], slowThird && i === 2 ? 2000 : 900 + i * 220);
           feel.sound("stop"); feel.buzz(8);
           setSettled((s) => s.map((v, k) => (k === i ? true : v)));
+          if (slowThird && i === 1) setHits([true, true, false]);
         }),
       ),
     );
@@ -590,6 +655,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
 
     if (out.outcome === "triple") { feel.sound("match"); feel.buzz([30, 40, 30, 40, 60]); }
     else if (out.outcome === "pair") { feel.sound("match"); feel.buzz([20, 30, 20]); }
+    if (res.j.bonusRound) { await sleep(1000); onBonus(); }
     if ((res.j.newSets ?? []).length) { await sleep(450); feel.sound("set"); feel.buzz([25, 50, 25]); }
     if (res.j.tierUp) {
       await sleep(900); feel.sound("tier"); feel.buzz([40, 60, 40, 60, 120]);
@@ -601,6 +667,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
     }
   }
 
+  const featured = cfg.odds.symbols.find((s) => s.id === player.featured?.id);
   const resetTxt = formatLeft(untilReset);
   // "today" or "tomorrow", judged in the game's own time zone so it is right wherever the player is.
   const dayOf = (x: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: cfg.reset.timeZone }).format(x);
@@ -632,6 +699,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
               <div className="what">{whatText}</div>
               <div className="pts tnum">+{pts} points</div>
               {mult > 1 && <div className="hint small">Symbol points multiplied by {mult}</div>}
+              {(result.featuredHits ?? 0) > 0 && <div className="bonusline">Featured symbol: its points counted double.</div>}
               {result.outcome === "triple" && <div className="bonusline">Trophy earned. {player.week.trophies} of {player.week.trophiesNeeded} this week.</div>}
               {newSets.map((s) => <div key={s.id} className="bonusline">Set complete: {s.name}. +{s.points} bonus points</div>)}
             </>
@@ -650,6 +718,12 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
           <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : `All spins used. New spins ${resetToday ? "today" : "tomorrow"} at ${cfg.reset.label}`}</span>
         </div>
 
+        {featured && (
+          <div className="featured">
+            <Glyph id={featured.id} rarity={featured.rarity} title={featured.name} />
+            <span className="small">Today's featured symbol is <b>{featured.name}</b>. Its points count double. Odds are unchanged.</span>
+          </div>
+        )}
         {notice && <div className="bonusline" role="status" style={{ textAlign: "center", marginBottom: 8 }}>{notice}</div>}
         <button className="btn" disabled={busy || left <= 0} onClick={spin}>
           {busy ? "Spinning" : left > 0 ? "Spin" : `New spins in ${resetTxt}`}
@@ -675,7 +749,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
               </tbody>
             </table>
             <p className="small muted">
-              Each reel is an independent random draw made on our server. Per spin: {pct(cfg.odds.pair)} chance of exactly one pair (points x{cfg.odds.multipliers.pair}), {pct(cfg.odds.triple)} chance of three of a kind (points x{cfg.odds.multipliers.triple}), {pct(cfg.odds.none)} no match. Set bonuses are one-off and never change the odds.
+              Each reel is an independent random draw made on our server. Today's featured symbol counts double in the points and never changes the odds. Per spin: {pct(cfg.odds.pair)} chance of exactly one pair (points x{cfg.odds.multipliers.pair}), {pct(cfg.odds.triple)} chance of three of a kind (points x{cfg.odds.multipliers.triple}), {pct(cfg.odds.none)} no match. Set bonuses are one-off and never change the odds.
             </p>
           </div>
         )}

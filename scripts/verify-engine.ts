@@ -1,6 +1,10 @@
 import { config, publishedOdds, totalWeight } from "../src/lib/config";
 import { spinOnce, tierFor, scoreSpin } from "../src/lib/engine";
 import { advertDisclosure } from "../src/lib/advert";
+import { featuredSymbol } from "../src/lib/featured";
+import { bonusFor } from "../src/lib/bonus";
+import { SKINS } from "../src/lib/skins";
+import { readFileSync } from "node:fs";
 import { ageOn, minAgeFor, playDate, weekStart, previousWeekStart, nextReset, nextWeekReset, resetIsToday } from "../src/lib/dates";
 
 const N = 200_000;
@@ -27,11 +31,12 @@ console.log(`published: none ${(odds.none * 100).toFixed(1)}% / pair ${(odds.pai
 console.log(`avg points per spin: ${(points / N).toFixed(2)}; per week at 21 spins: ~${(points / N * 21).toFixed(0)} (tiers: ${config.tiers.map((t) => t.minPoints).join("/")})`);
 
 // scoring + tiers + dates
+const pick = (r: { outcome: string; points: number }) => ({ outcome: r.outcome, points: r.points });
 const pts = (id: string) => config.symbols.find((x) => x.id === id)!.points;
 const eq = (label: string, a: unknown, b: unknown) => { const p = JSON.stringify(a) === JSON.stringify(b); if (!p) ok = false; console.log(`${p ? "PASS" : "FAIL"} ${label}`); };
-eq("triple cherry = 3 cherries x triple multiplier", scoreSpin(["cherry", "cherry", "cherry"]), { outcome: "triple", points: config.symbols[0].points * 3 * config.multipliers.triple });
-eq("pair bells + star = (bell+bell+star) x pair multiplier", scoreSpin(["bell", "bell", "star"]), { outcome: "pair", points: (pts("bell") * 2 + pts("star")) * config.multipliers.pair });
-eq("no match = plain sum", scoreSpin(["cherry", "bell", "star"]), { outcome: "none", points: pts("cherry") + pts("bell") + pts("star") });
+eq("triple cherry = 3 cherries x triple multiplier", pick(scoreSpin(["cherry", "cherry", "cherry"])), { outcome: "triple", points: config.symbols[0].points * 3 * config.multipliers.triple });
+eq("pair bells + star = (bell+bell+star) x pair multiplier", pick(scoreSpin(["bell", "bell", "star"])), { outcome: "pair", points: (pts("bell") * 2 + pts("star")) * config.multipliers.pair });
+eq("no match = plain sum", pick(scoreSpin(["cherry", "bell", "star"])), { outcome: "none", points: pts("cherry") + pts("bell") + pts("star") });
 eq("tier at 0", tierFor(0).current.id, "bronze");
 eq("tier at the Silver threshold", tierFor(config.tiers[1].minPoints).current.id, "silver");
 eq("tier just below Silver", tierFor(config.tiers[1].minPoints - 1).current.id, "bronze");
@@ -77,4 +82,45 @@ eq("US advert does not name a UK charity", !/begambleaware/i.test(advertDisclosu
 eq("UK advert says 18+ and gives the UK help line", /18\+/.test(advertDisclosure(18, sup.UK)) && /begambleaware\.org/.test(advertDisclosure(18, sup.UK)) && /0808 8020 133/.test(advertDisclosure(18, sup.UK)), true);
 eq("every region has an advert line with an age, T&Cs and a help source", Object.keys(sup).every((r) => /\d\d\+\. T&Cs apply\. Help: \S+/.test(advertDisclosure(18, sup[r as keyof typeof sup]))), true);
 eq("everyone else needs to be 18", [minAgeFor("GB"), minAgeFor("ie"), minAgeFor(null)].join(), "18,18,18");
+
+// --- the featured symbol of the day ---
+eq("the featured symbol is the same all day", featuredSymbol("2026-10-09") === featuredSymbol("2026-10-09"), true);
+const feats = new Set<string>(); let legendary = false;
+for (let d = 0; d < 700; d++) { const f = featuredSymbol(new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10)); feats.add(f); if (f === "golden-reel") legendary = true; }
+eq("the featured symbol is never the Legendary one", legendary, false);
+eq("over time every other symbol gets a turn", feats.size, config.symbols.length - 1);
+eq("a featured symbol counts double in the base points", scoreSpin(["star", "cherry", "bell"], "star").points, (pts("star") * 2 + pts("cherry") + pts("bell")));
+eq("featured hits are counted", scoreSpin(["star", "star", "bell"], "star").featuredHits, 2);
+eq("featured triple: doubled base, then the triple multiplier", scoreSpin(["star", "star", "star"], "star").points, pts("star") * 2 * 3 * config.multipliers.triple);
+eq("with no featured symbol nothing changes", scoreSpin(["star", "cherry", "bell"]).points, pts("star") + pts("cherry") + pts("bell"));
+eq("a different featured symbol changes nothing for this spin", scoreSpin(["star", "cherry", "bell"], "gem").points, pts("star") + pts("cherry") + pts("bell"));
+
+// --- bonus round bands ---
+eq("dead centre is Perfect", bonusFor(1).label, "Perfect");
+eq("0.9 is still Perfect", bonusFor(0.9).label, "Perfect");
+eq("just under 0.9 is Great", bonusFor(0.89).label, "Great");
+eq("0.65 is Great", bonusFor(0.65).label, "Great");
+eq("just under 0.65 is Good", bonusFor(0.64).label, "Good");
+eq("0.35 is Good", bonusFor(0.35).label, "Good");
+eq("under 0.35 is a Miss", bonusFor(0.34).label, "Miss");
+eq("the very edge is a Miss", bonusFor(0).label, "Miss");
+eq("rubbish input is a Miss, not an error", bonusFor(NaN).label, "Miss");
+eq("an impossible accuracy above 1 is capped at Perfect", bonusFor(7).points, bonusFor(1).points);
+eq("a Miss is never worth more than the standard bonus", bonusFor(0).points <= config.bonus.skipPoints, true);
+eq("the standard bonus is worth no more than a Great stop", config.bonus.skipPoints <= bonusFor(0.7).points, true);
+
+// --- skins: every skin must be complete, and readable ---
+const glyphSource = readFileSync(new URL("../src/components/glyph-shapes.tsx", import.meta.url), "utf8");
+const knownArt = new Set([...glyphSource.matchAll(/case "([a-z-]+)":/g)].map((m) => m[1]));
+const lum = (hex: string) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const ratio = (a: string, b: string) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+for (const sk of Object.values(SKINS)) {
+  eq(`${sk.label}: every symbol has a name and a drawing that exists`, config.symbols.every((s) => sk.symbols[s.id]?.name && knownArt.has(sk.symbols[s.id].art)), true);
+  eq(`${sk.label}: symbol names are all different`, new Set(Object.values(sk.symbols).map((x) => x.name)).size, config.symbols.length);
+  eq(`${sk.label}: every rarity has a colour`, ["Common", "Rare", "Epic", "Legendary"].every((r) => /^#[0-9A-Fa-f]{6}$/.test(sk.rarity[r as keyof typeof sk.rarity])), true);
+  eq(`${sk.label}: text on the background is easy to read (7:1)`, ratio(sk.card.text, sk.card.bg) >= 7, true);
+  eq(`${sk.label}: muted text on the background passes AA (4.5:1)`, ratio(sk.card.muted, sk.card.bg) >= 4.5, true);
+  eq(`${sk.label}: the accent on the background passes for large text and controls (3:1)`, ratio(sk.card.accent, sk.card.bg) >= 3, true);
+  eq(`${sk.label}: every symbol colour can be seen against the reel window (3:1)`, Object.values(sk.rarity).every((c) => ratio(c, sk.card.win) >= 3), true);
+}
 process.exit(ok ? 0 : 1);

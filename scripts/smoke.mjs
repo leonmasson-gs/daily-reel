@@ -233,6 +233,25 @@ expect("invite page title mentions the friend invite", html.includes("A friend i
   expect("a bad visibility request is refused (400)", (await guest.call("/api/friends/visibility", "POST", { visible: "yes" })).status === 400);
 }
 
+// skins, the featured symbol and the bonus round
+{
+  expect("config carries the skin, featured and bonus settings", cfg.skin?.default === "grandstand" && cfg.skin?.allowSwitch === true && cfg.featured?.multiplier === 2 && cfg.bonus?.bands?.length === 4 && cfg.bonus?.skipPoints === 6, [cfg.skin, cfg.featured, cfg.bonus]);
+  const fp = new Client(); await fp.call("/api/age-gate", "POST", { dob: ADULT });
+  const fst = (await fp.call("/api/state")).json.player;
+  expect("state names today's featured symbol", typeof fst.featured?.id === "string" && fst.featured.multiplier === 2 && cfg.odds.symbols.some((s) => s.id === fst.featured.id && s.rarity !== "Legendary"), fst.featured);
+  const sp1 = await fp.call("/api/spin", "POST");
+  expect("a spin result carries featuredHits and whether a bonus round was earned", typeof sp1.json.result.featuredHits === "number" && typeof sp1.json.bonusRound === "boolean" && sp1.json.bonusRound === (sp1.json.result.outcome === "triple"), sp1.json.result);
+  expect("the bonus round needs an age check (401)", (await new Client().call("/api/bonus", "POST", { skip: true })).status === 401);
+  expect("a bonus request with nothing waiting is refused (409)", sp1.json.result.outcome === "triple" || (await fp.call("/api/bonus", "POST", { skip: true })).status === 409);
+  expect("a bonus request with rubbish is refused (400)", (await fp.call("/api/bonus", "POST", { accuracy: "lots" })).status === 400);
+  // share cards follow the skin, and a made-up skin falls back safely
+  const cardBytes = async (q) => { const r = await fetch(BASE + "/api/card?" + q); return { s: r.status, b: Buffer.from(await r.arrayBuffer()) }; };
+  const q0 = "kind=week&tier=Silver&pts=131&days=3&found=cherry,bell,lemon";
+  const c1 = await cardBytes(q0), c2 = await cardBytes(q0 + "&skin=tgb"), c3 = await cardBytes(q0 + "&skin=not-a-skin");
+  expect("the Tom Garratt Bets card is a PNG and looks different from the default", c2.s === 200 && c2.b.slice(0, 4).toString("hex") === "89504e47" && !c1.b.equals(c2.b), [c1.b.length, c2.b.length]);
+  expect("an unknown skin falls back to the default card", c3.s === 200 && c3.b.equals(c1.b));
+}
+
 // admin stats are locked
 const nobody = new Client();
 expect("stats are refused without signing in (401)", (await nobody.call("/api/admin/stats")).status === 401);

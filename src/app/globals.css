@@ -28,6 +28,8 @@
 
   --sans: "GT America", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
   --serif: "FK Roman", Georgia, "Times New Roman", serif;
+  --display: var(--sans);   /* headings and the brand mark */
+  --button: var(--sans);    /* buttons */
   --cell: clamp(108px, 15.5vh, 150px);
 }
 * { box-sizing: border-box; }
@@ -37,7 +39,7 @@ button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--carolina); outline-offset: 2px; border-radius: 6px; }
 
 .app { max-width: 480px; margin: 0 auto; padding: 14px 16px 104px; }
-h1, h2, h3 { font-family: var(--sans); margin: 0; line-height: 1.15; }
+h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.15; }
 h2 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.01em; }
 h3 { font-size: 1rem; font-weight: 700; }
 p { font-family: var(--serif); font-size: 1rem; line-height: 1.55; margin: 8px 0; }
@@ -57,15 +59,15 @@ p { font-family: var(--serif); font-size: 1rem; line-height: 1.55; margin: 8px 0
 /* The machine: the one memorable thing */
 .machine { background: linear-gradient(180deg, var(--panel-hi), var(--panel)); border: 3px solid var(--mustard); border-radius: 22px; padding: 14px; box-shadow: 0 18px 40px rgba(0,0,0,.35), inset 0 0 0 2px rgba(8,26,49,.4); }
 .reels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: var(--win); border-radius: 14px; padding: 10px; box-shadow: inset 0 4px 14px rgba(0,0,0,.6); }
-.reel-win { position: relative; height: var(--cell); overflow: hidden; border-radius: 10px; background: radial-gradient(120% 100% at 50% 40%, #17396A, var(--win)); }
+.reel-win { position: relative; height: var(--cell); overflow: hidden; border-radius: 10px; background: radial-gradient(120% 100% at 50% 40%, color-mix(in srgb, var(--panel) 70%, var(--win)), var(--win)); }
 .reel-win::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(8,26,49,.6), transparent 22%, transparent 78%, rgba(8,26,49,.6)); }
 .strip { will-change: transform; }
 .cell { height: var(--cell); display: grid; place-items: center; }
 .cell svg { width: 62%; height: auto; display: block; }
-.reel-win.hit { animation: hit .9s ease-out 1; box-shadow: 0 0 0 2px var(--mustard), 0 0 26px rgba(230,174,85,.4); }
+.reel-win.hit { animation: hit .9s ease-out 1; box-shadow: 0 0 0 2px var(--mustard), 0 0 26px color-mix(in srgb, var(--mustard-hi) 40%, transparent); }
 .reel-win.settle { animation: settle .28s ease-out 1; }
 @keyframes settle { 0% { transform: translateY(-5px); } 55% { transform: translateY(2px); } 100% { transform: translateY(0); } }
-@keyframes hit { 0% { box-shadow: 0 0 0 2px var(--mustard), 0 0 0 rgba(230,174,85,0); } 40% { box-shadow: 0 0 0 3px var(--mustard), 0 0 38px rgba(230,174,85,.65); } 100% { box-shadow: 0 0 0 2px var(--mustard), 0 0 26px rgba(230,174,85,.4); } }
+@keyframes hit { 0% { box-shadow: 0 0 0 2px var(--mustard), 0 0 0 color-mix(in srgb, var(--mustard-hi) 0%, transparent); } 40% { box-shadow: 0 0 0 3px var(--mustard), 0 0 38px color-mix(in srgb, var(--mustard-hi) 65%, transparent); } 100% { box-shadow: 0 0 0 2px var(--mustard), 0 0 26px color-mix(in srgb, var(--mustard-hi) 40%, transparent); } }
 
 .result { min-height: 54px; padding: 12px 2px 4px; text-align: center; }
 .result .what { font-weight: 700; font-size: 1.0625rem; }
@@ -79,7 +81,7 @@ p { font-family: var(--serif); font-size: 1rem; line-height: 1.55; margin: 8px 0
 .pip.bonus.on { background: var(--carolina); }
 .pips .label { margin-left: 8px; font-size: 0.875rem; }
 
-.btn { display: block; width: 100%; min-height: 54px; border: 0; border-radius: 12px; background: var(--mustard); color: var(--win); font-weight: 800; font-size: 1.125rem; letter-spacing: .01em; cursor: pointer; text-align: center; text-decoration: none; padding: 14px 16px; }
+.btn { font-family: var(--button); display: block; width: 100%; min-height: 54px; border: 0; border-radius: 12px; background: var(--mustard); color: var(--win); font-weight: 800; font-size: 1.125rem; letter-spacing: .01em; cursor: pointer; text-align: center; text-decoration: none; padding: 14px 16px; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { background: var(--panel-hi); color: var(--muted); cursor: not-allowed; }
 .btn.quiet { background: transparent; color: var(--offwhite); border: 1.5px solid var(--line); font-size: 1rem; min-height: 48px; font-weight: 700; }
@@ -117,7 +119,7 @@ input[type=date], input[type=email], input[type=text], select { width: 100%; min
 .offer { border: 1.5px dashed var(--line); border-radius: 14px; padding: 16px; margin: 14px 0; }
 .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--line-soft); color: var(--offwhite); }
 
-.nav { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(14,42,77,.95); backdrop-filter: blur(10px); border-top: 1px solid var(--line-soft); padding-bottom: env(safe-area-inset-bottom, 0); z-index: 5; }
+.nav { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 95%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line-soft); padding-bottom: env(safe-area-inset-bottom, 0); z-index: 5; }
 .nav .in { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
 .nav button { background: none; border: 0; padding: 10px 2px 11px; color: var(--muted); font-size: 0.75rem; font-weight: 600; cursor: pointer; display: grid; justify-items: center; gap: 4px; min-height: 58px; }
 .nav button svg { width: 24px; height: 24px; }
@@ -147,7 +149,7 @@ input[type=date], input[type=email], input[type=text], select { width: 100%; min
 .day i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); display: block; }
 .day.played i { background: var(--mustard); border-color: var(--mustard); }
 .day.today i { border-color: var(--carolina); }
-.day.played.today i { border-color: var(--mustard); box-shadow: 0 0 0 3px rgba(77,167,255,.6); }
+.day.played.today i { border-color: var(--mustard); box-shadow: 0 0 0 3px color-mix(in srgb, var(--carolina) 60%, transparent); }
 
 /* Sets */
 .setrow { padding: 14px 0; border-top: 1px solid var(--line-soft); }
@@ -186,7 +188,7 @@ input[type=date], input[type=email], input[type=text], select { width: 100%; min
 .top .btn { white-space: nowrap; }
 
 /* Rewards preview */
-.previewtag { border: 1.5px dashed var(--mustard); border-radius: 12px; padding: 12px 14px; margin: 12px 0; font-size: 0.875rem; line-height: 1.45; background: rgba(200,138,46,.12); }
+.previewtag { border: 1.5px dashed var(--mustard); border-radius: 12px; padding: 12px 14px; margin: 12px 0; font-size: 0.875rem; line-height: 1.45; background: color-mix(in srgb, var(--mustard) 12%, transparent); }
 .poolrow { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 .poolrow select { width: auto; min-height: 44px; }
 .rung { border-top: 1px solid var(--line-soft); padding: 18px 0 8px; }
@@ -273,7 +275,7 @@ a { color: var(--carolina); text-underline-offset: 3px; }
 .trophyrow .slots { display: flex; gap: 6px; flex: none; }
 .trophyrow .slot { width: 40px; height: 40px; border-radius: 10px; border: 1.5px dashed var(--line); display: grid; place-items: center; }
 .trophyrow .slot svg { opacity: .28; filter: grayscale(1); }
-.trophyrow .slot.on { border: 1.5px solid var(--mustard); background: rgba(200,138,46,.15); }
+.trophyrow .slot.on { border: 1.5px solid var(--mustard); background: color-mix(in srgb, var(--mustard) 15%, transparent); }
 .trophyrow .slot.on svg { opacity: 1; filter: none; }
 
 /* Layouts that must survive large text and 200% zoom */
@@ -334,3 +336,65 @@ a { color: var(--carolina); text-underline-offset: 3px; }
   .pool { border-color: CanvasText; }
   :focus-visible { outline: 3px solid Highlight; }
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Skins. The default look is at the top of this file. A skin only overrides colours, fonts and a few finishing touches.
+   --------------------------------------------------------------------------------------------------------------- */
+.brandwrap { display: flex; flex-direction: column; min-width: 0; }
+.eyebrow { display: none; }
+.brand .b1, .brand .b2 { display: inline; }
+
+/* Tom Garratt Bets. Colours read from the site: background #0A0E1A, yellow #F5C300, white #F4F5F8, muted #989AA1. */
+html[data-skin="tgb"] {
+  --navy: #0A0E1A; --bg: #0A0E1A; --bg-2: #101627; --panel: #161C2C; --panel-hi: #1F2740;
+  --line: #34405E; --line-soft: #1B2338; --win: #070A14;
+  --offwhite: #F4F5F8; --muted: #989AA1;
+  --mustard: #F5C300; --mustard-hi: #FFD93D; --carolina: #8DB8FF; --danger: #FF9A9A;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --serif: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --display: "Montserrat", "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  --button: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+}
+html[data-skin="tgb"] .brand { font-family: var(--display); font-weight: 900; font-size: min(1.3rem, 6.4vw); letter-spacing: -.02em; text-transform: uppercase; }
+html[data-skin="tgb"] .brand i { display: none; }
+html[data-skin="tgb"] .brand .b1 { color: var(--mustard); }
+html[data-skin="tgb"] .brand .b2 { color: var(--offwhite); }
+html[data-skin="tgb"] .eyebrow { display: block; color: var(--mustard); font-size: .75rem; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; margin: 0 0 0 2px; }
+html[data-skin="tgb"] h2, html[data-skin="tgb"] h3 { text-transform: uppercase; font-weight: 900; letter-spacing: .01em; }
+html[data-skin="tgb"] h2 { font-size: 1.5rem; }
+html[data-skin="tgb"] .btn { text-transform: uppercase; letter-spacing: .06em; font-weight: 700; font-size: 1.1875rem; border-radius: 10px; }
+html[data-skin="tgb"] .btn.quiet { font-size: 1.0625rem; }
+html[data-skin="tgb"] .pts, html[data-skin="tgb"] .bigstat { font-family: var(--display); font-weight: 900; }
+html[data-skin="tgb"] .machine { border-radius: 16px; background: linear-gradient(180deg, var(--panel-hi), var(--panel)); }
+html[data-skin="tgb"] .reels { background: var(--win); }
+html[data-skin="tgb"] .nav button[aria-current=page] { box-shadow: inset 0 3px 0 var(--mustard); }
+
+/* The skin switcher */
+.skinswitch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 22px; }
+.pillbtn { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--line); background: transparent; color: var(--offwhite); font-weight: 700; font-size: .875rem; cursor: pointer; }
+.pillbtn[aria-pressed=true] { background: var(--mustard); border-color: var(--mustard); color: var(--win); }
+@media (forced-colors: active) { .pillbtn { border: 2px solid ButtonText; } .pillbtn[aria-pressed=true] { border-color: Highlight; color: Highlight; } }
+
+/* Featured symbol chip */
+.featured { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, var(--mustard) 10%, transparent); border: 1px solid color-mix(in srgb, var(--mustard) 35%, transparent); }
+.featured svg { width: 34px; height: 34px; flex: none; display: block; }
+.featured .small { font-family: var(--sans); line-height: 1.35; }
+
+/* The bonus round */
+.btrack { position: relative; height: 60px; border-radius: 12px; background: var(--win); border: 1.5px solid var(--line); overflow: hidden; margin: 18px 0 6px; }
+.bzone { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); }
+.bzone.z0 { background: color-mix(in srgb, var(--mustard) 16%, transparent); }
+.bzone.z1 { background: color-mix(in srgb, var(--mustard) 34%, transparent); }
+.bzone.z2 { background: color-mix(in srgb, var(--mustard) 70%, transparent); }
+.bmarker { position: absolute; top: 8px; bottom: 8px; left: 0; width: 12px; margin-left: -6px; border-radius: 6px; background: var(--offwhite); box-shadow: 0 0 0 2px var(--win); }
+.bmarker.ball { top: 10px; bottom: auto; width: 40px; height: 40px; margin-left: -20px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #2a3144 0 26%, var(--offwhite) 28%); }
+.blabels { display: flex; justify-content: center; gap: 14px; margin: 0 0 14px; }
+.bresult { font-family: var(--display); font-weight: 900; font-size: 2.25rem; letter-spacing: -.01em; color: var(--mustard); text-transform: uppercase; margin: 6px 0; }
+@media (forced-colors: active) { .bmarker { border: 2px solid CanvasText; forced-color-adjust: none; background: Highlight; } .bzone { forced-color-adjust: none; background: Highlight; opacity: .35; } .btrack { border: 2px solid CanvasText; } .featured { border: 2px solid CanvasText; } }
+
+/* A long wordmark must never push the page sideways, at large text sizes or high zoom */
+.brandwrap { min-width: 0; max-width: 100%; }
+.brandbtn { max-width: 100%; }
+html[data-skin="tgb"] .brand, html[data-skin="tgb"] .brandbtn { overflow-wrap: anywhere; }
+html[data-skin="tgb"] h2 { font-size: min(1.5rem, 8.5vw); }
+html[data-skin="tgb"] h2, html[data-skin="tgb"] h3 { overflow-wrap: anywhere; }

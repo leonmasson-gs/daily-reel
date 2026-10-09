@@ -298,5 +298,38 @@
     "needed": 3,
     "tierLabel": "Grand tier",
     "note": "Preview. Nothing is awarded in this version."
+  },
+  "skin": {
+    "default": "grandstand",
+    "allowSwitch": true
+  },
+  "featured": {
+    "multiplier": 2
+  },
+  "bonus": {
+    "windowMinutes": 15,
+    "skipPoints": 6,
+    "bands": [
+      {
+        "min": 0.9,
+        "label": "Perfect",
+        "points": 20
+      },
+      {
+        "min": 0.65,
+        "label": "Great",
+        "points": 12
+      },
+      {
+        "min": 0.35,
+        "label": "Good",
+        "points": 6
+      },
+      {
+        "min": 0,
+        "label": "Miss",
+        "points": 2
+      }
+    ]
   }
 }

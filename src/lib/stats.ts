@@ -86,12 +86,17 @@ export async function getStats(q: Query, now = new Date()) {
     [week, config.trophies.needed],
   );
 
+  // Bonus rounds: how players did
+  const bonusRows = await q<{ label: string | null; n: number }>(
+    "select meta->>'label' as label, count(*)::int as n from events where name = 'bonus_played' group by 1 order by 2 desc",
+  );
+
   // Progress and sets
   const setRows = await q<{ set_id: string; n: number }>("select set_id, count(*)::int as n from set_awards group by set_id");
   const weekly = await q<{ points: number }>(
     `select (coalesce(sp.pts, 0) + coalesce(sa.pts, 0))::int as points
        from (select distinct player_id from spins where week_start = $1) p
-       left join (select player_id, sum(points) pts from spins where week_start = $1 group by player_id) sp using (player_id)
+       left join (select player_id, sum(points + bonus_points) pts from spins where week_start = $1 group by player_id) sp using (player_id)
        left join (select player_id, sum(points) pts from set_awards where week_start = $1 group by player_id) sa using (player_id)`,
     [week],
   );
@@ -161,6 +166,7 @@ export async function getStats(q: Query, now = new Date()) {
     progress: {
       tiersThisWeek: tiers,
       sets: config.sets.map((s) => ({ name: s.name, completed: setRows.find((r) => r.set_id === s.id)?.n ?? 0 })),
+      bonusRounds: bonusRows.map((r) => ({ label: r.label ?? "Unknown", n: r.n })),
       trophyPlayers: trophy_players,
       grandPlayers: grand_players,
       introCompleted: ev.intro_completed ?? 0,

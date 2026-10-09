@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "./Overlays";
+import { useSkin } from "./SkinContext";
 
 type ShareInput = {
   inviteCode: string;
@@ -17,7 +18,8 @@ const track = (name: string) =>
 
 export function ShareDialog({ data, onClose }: { data: ShareInput; onClose: () => void }) {
   const [status, setStatus] = useState("");
-  const qs = new URLSearchParams({ kind: "week", tier: data.tierName, pts: String(data.points), days: String(data.daysPlayed), trophies: String(data.trophies), found: data.found.join(",") });
+  const skin = useSkin();
+  const qs = new URLSearchParams({ kind: "week", tier: data.tierName, pts: String(data.points), days: String(data.daysPlayed), trophies: String(data.trophies), skin: skin.id, found: data.found.join(",") });
   const cardPath = `/api/card?${qs}`;
   const link = typeof window === "undefined" ? "" : `${window.location.origin}/?ref=${data.inviteCode}`;
   const text = `I'm ${data.tierName} on Daily Reel this week. Free to play. 18+ (21+ where US rules require).`;

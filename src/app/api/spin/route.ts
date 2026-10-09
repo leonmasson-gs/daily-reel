@@ -40,6 +40,7 @@ export async function POST() {
       tierUp: result.tierUp,
       trophy: result.trophy,
       grandReached: result.grandReached,
+      bonusRound: result.bonusRound,
       state,
     });
   } catch (e: any) {

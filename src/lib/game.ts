@@ -2,6 +2,7 @@ import { ready, type Query } from "./db";
 import { config } from "./config";
 import { tierFor } from "./engine";
 import { nextReset, nextWeekReset, playDate, weekStart } from "./dates";
+import { featuredSymbol } from "./featured";
 
 export async function allowance(q: Query, playerId: string) {
   const today = playDate();
@@ -54,7 +55,7 @@ export async function weekTrophies(q: Query, playerId: string, week: string): Pr
 /** Points for a given week: spin points plus one-off set bonuses awarded that week. */
 export async function weekPoints(q: Query, playerId: string, week: string): Promise<number> {
   const [row] = await q<{ points: number }>(
-    `select ((select coalesce(sum(points), 0) from spins where player_id = $1 and week_start = $2)
+    `select ((select coalesce(sum(points + bonus_points), 0) from spins where player_id = $1 and week_start = $2)
            + (select coalesce(sum(points), 0) from set_awards where player_id = $1 and week_start = $2))::int as points`,
     [playerId, week],
   );
@@ -112,6 +113,7 @@ export async function buildState(playerId: string) {
     inviteCode: player.invite_code,
     emailSaved: Boolean(player.email),
     rewardsNotify: player.rewards_notify,
+    featured: { id: featuredSymbol(playDate()), multiplier: config.featured.multiplier },
     rewards: { weeksRegular: weeks.regular, weeksFull: weeks.full },
     spins: {
       perDay: config.spinsPerDay,

@@ -87,6 +87,8 @@ create table if not exists spins (
   unique (player_id, play_date, spin_number)
 );
 alter table spins add column if not exists is_signup_bonus boolean not null default false;
+alter table spins add column if not exists bonus_points int not null default 0;
+alter table spins add column if not exists bonus_claimed boolean not null default false;
 create index if not exists spins_player_week on spins (player_id, week_start);
 create table if not exists bonus_grants (
   id bigserial primary key,
