@@ -1,20 +1,19 @@
 import type { Query } from "./db";
 import { config, totalWeight, publishedOdds } from "./config";
 import { tierFor } from "./engine";
-import { utcDate, utcWeekStart } from "./dates";
+import { addDays, playDate, weekStart } from "./dates";
 
-const DAY = 86400000;
-const dayStr = (d: Date) => d.toISOString().slice(0, 10);
 
 function lastDays(n: number, now = new Date()): string[] {
-  return Array.from({ length: n }, (_, i) => dayStr(new Date(now.getTime() - (n - 1 - i) * DAY)));
+  const today = playDate(now);
+  return Array.from({ length: n }, (_, i) => addDays(today, -(n - 1 - i)));
 }
 const pctOf = (a: number, b: number) => (b > 0 ? a / b : null);
 
 /** Aggregate numbers only. No emails, no player ids, nothing that identifies a person. */
 export async function getStats(q: Query, now = new Date()) {
-  const today = utcDate(now);
-  const week = utcWeekStart(now);
+  const today = playDate(now);
+  const week = weekStart(now);
   const days = lastDays(14, now);
 
   const one = async <T,>(sql: string, params: unknown[] = []) => (await q<T>(sql, params))[0];
@@ -80,6 +79,13 @@ export async function getStats(q: Query, now = new Date()) {
   );
   const { notify } = await one<{ notify: number }>("select count(*)::int as notify from players where rewards_notify");
 
+  // Trophies this week
+  const { trophy_players, grand_players } = await one<{ trophy_players: number; grand_players: number }>(
+    `select count(*)::int as trophy_players, count(*) filter (where n >= $2)::int as grand_players
+       from (select player_id, count(*) n from spins where week_start = $1 and outcome = 'triple' group by player_id) t`,
+    [week, config.trophies.needed],
+  );
+
   // Progress and sets
   const setRows = await q<{ set_id: string; n: number }>("select set_id, count(*)::int as n from set_awards group by set_id");
   const weekly = await q<{ points: number }>(
@@ -143,6 +149,7 @@ export async function getStats(q: Query, now = new Date()) {
         { rung: "regular", label: `${config.rewards.regular.title} badge`, players: interestRows.find((r) => r.rung === "regular")?.n ?? 0 },
         { rung: "partner", label: `${config.rewards.partner.tier} partner offer`, players: interestRows.find((r) => r.rung === "partner")?.n ?? 0 },
         { rung: "draw", label: config.rewards.draw.title, players: interestRows.find((r) => r.rung === "draw")?.n ?? 0 },
+        { rung: "grand", label: config.rewards.grand.title, players: interestRows.find((r) => r.rung === "grand")?.n ?? 0 },
       ],
     },
     daily: days.map((d) => ({
@@ -154,6 +161,8 @@ export async function getStats(q: Query, now = new Date()) {
     progress: {
       tiersThisWeek: tiers,
       sets: config.sets.map((s) => ({ name: s.name, completed: setRows.find((r) => r.set_id === s.id)?.n ?? 0 })),
+      trophyPlayers: trophy_players,
+      grandPlayers: grand_players,
       introCompleted: ev.intro_completed ?? 0,
       introSkipped: ev.intro_skipped ?? 0,
       tierUps: ev.tier_up ?? 0,

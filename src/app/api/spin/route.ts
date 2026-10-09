@@ -3,7 +3,7 @@ import { ready, logEvent } from "@/lib/db";
 import { currentPlayerId } from "@/lib/session";
 import { buildState } from "@/lib/game";
 import { performSpin } from "@/lib/spin";
-import { nextUtcMidnight } from "@/lib/dates";
+import { nextReset } from "@/lib/dates";
 
 export async function POST() {
   const playerId = await currentPlayerId();
@@ -21,7 +21,7 @@ export async function POST() {
     }
     if (result.kind === "no_spins") {
       return NextResponse.json(
-        { error: "no_spins", message: "You've used all your spins for today.", resetsAt: nextUtcMidnight() },
+        { error: "no_spins", message: "You've used all your spins for today.", resetsAt: nextReset() },
         { status: 429 },
       );
     }
@@ -30,12 +30,16 @@ export async function POST() {
     if (result.granted) await logEvent(result.inviter, "invite_redeemed", { invitee: playerId });
     for (const s of result.newSets) await logEvent(playerId, "set_completed", { set: s.id });
     if (result.tierUp) await logEvent(playerId, "tier_up", result.tierUp);
+    if (result.trophy) await logEvent(playerId, "trophy_earned");
+    if (result.grandReached) await logEvent(playerId, "grand_tier_reached");
 
     const state = await buildState(playerId);
     return NextResponse.json({
       result: { ...result.spin, isBonus: result.isBonus },
       newSets: result.newSets,
       tierUp: result.tierUp,
+      trophy: result.trophy,
+      grandReached: result.grandReached,
       state,
     });
   } catch (e: any) {

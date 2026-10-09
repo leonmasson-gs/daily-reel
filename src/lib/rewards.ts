@@ -29,6 +29,10 @@ export function partnerProgress(points: number, tiers: { name: string; minPoints
 }
 
 /** One entry per day played, from the minimum up to the cap. Below the minimum there are no entries. */
+export function grandProgress(trophies: number, rw: RewardsCfg = config.rewards) {
+  return { trophies, need: rw.grand.trophiesNeeded, earned: trophies >= rw.grand.trophiesNeeded };
+}
+
 export function drawProgress(daysPlayed: number, rw: RewardsCfg = config.rewards) {
   const qualifies = daysPlayed >= rw.draw.minDays;
   return {

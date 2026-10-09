@@ -1,7 +1,7 @@
 // Simple flat artwork for the sample rewards. All of it is placeholder.
 const GOLD = "#C88A2E", SKY = "#4DA7FF", INK = "#081A31", PANEL = "#225080", COPPER = "#B07A45", PAPER = "#F4F1EA";
 
-export type ArtKind = "badge" | "gift" | "voucher" | "hamper" | "ticket" | "star";
+export type ArtKind = "badge" | "gift" | "voucher" | "hamper" | "ticket" | "star" | "trophy";
 
 export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: number; label?: string }) {
   const common = { width: size, height: size, viewBox: "0 0 64 64", role: label ? "img" : "presentation", "aria-label": label, focusable: false } as const;
@@ -50,6 +50,16 @@ export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: nu
           <path d="M6 18 H58 V27 A5 5 0 0 0 58 37 V46 H6 V37 A5 5 0 0 0 6 27 Z" fill={SKY} />
           <path d="M40 18 V46" stroke={INK} strokeOpacity=".4" strokeWidth="2.5" strokeDasharray="3 4" />
           <polygon points="23,24 25.6,29.6 31.7,30.2 27.1,34.2 28.5,40.2 23,37 17.5,40.2 18.9,34.2 14.3,30.2 20.4,29.6" fill={INK} fillOpacity=".5" />
+        </svg>
+      );
+    case "trophy":
+      return (
+        <svg {...common}>
+          <path d="M18 8 H46 V26 C46 36 40 42 32 42 C24 42 18 36 18 26 Z" fill={GOLD} />
+          <path d="M18 14 H9 C9 26 13 30 19 31 M46 14 H55 C55 26 51 30 45 31" fill="none" stroke={GOLD} strokeWidth="4" strokeLinecap="round" />
+          <rect x="29" y="42" width="6" height="9" fill={GOLD} />
+          <rect x="21" y="51" width="22" height="6" rx="2" fill={GOLD} />
+          <path d="M24 14 V25" stroke={INK} strokeOpacity=".3" strokeWidth="3" strokeLinecap="round" />
         </svg>
       );
     case "star":

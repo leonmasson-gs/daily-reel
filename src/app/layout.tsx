@@ -6,7 +6,7 @@ const site = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.
 export const metadata: Metadata = {
   metadataBase: new URL(site),
   title: "Daily Reel",
-  description: "Three free spins a day. Collect symbols, climb the weekly tier. Free to play, 18+.",
+  description: "Three free spins a day. Collect symbols, climb the weekly tier. Free to play. 18+ (21+ where US rules require).",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0E2A4D" };

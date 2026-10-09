@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { RewardArt, type ArtKind } from "./RewardArt";
-import { drawProgress, partnerProgress, regularProgress, type RewardsCfg } from "@/lib/rewards";
+import { drawProgress, grandProgress, partnerProgress, regularProgress, type RewardsCfg } from "@/lib/rewards";
 
 type Tier = { name: string; minPoints: number };
-type Base = { rw: RewardsCfg; region: string; daysPlayed: number; points: number; tiers: Tier[] };
+type Base = { rw: RewardsCfg; region: string; daysPlayed: number; points: number; tiers: Tier[]; trophies: number };
 
 const track = (name: string, extra?: object) =>
   fetch("/api/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, ...extra }) }).catch(() => {});
@@ -28,7 +28,7 @@ function Progress({ value, max, label }: { value: number; max: number; label: st
   );
 }
 
-function Vote({ rung, region }: { rung: "regular" | "partner" | "draw"; region: string }) {
+function Vote({ rung, region }: { rung: "regular" | "partner" | "draw" | "grand"; region: string }) {
   const [voted, setVoted] = useState(false);
   useEffect(() => { setVoted(readVotes().includes(rung)); }, [rung]);
   return (
@@ -39,12 +39,13 @@ function Vote({ rung, region }: { rung: "regular" | "partner" | "draw"; region: 
 }
 
 export function RewardsScreen({
-  rw, region, setRegion, daysPlayed, points, tiers, tierName, weeks,
+  rw, region, setRegion, daysPlayed, points, tiers, tierName, weeks, trophies,
 }: Base & { setRegion: (r: string) => void; tierName: string; weeks: { weeksRegular: number; weeksFull: number } }) {
   useEffect(() => { track("rewards_viewed", { region }); }, []); // once per visit
   const reg = regularProgress(daysPlayed, rw);
   const par = partnerProgress(points, tiers, rw);
   const dr = drawProgress(daysPlayed, rw);
+  const gr = grandProgress(trophies, rw);
   const offer = rw.partner.offers[region as keyof typeof rw.partner.offers] ?? rw.partner.offers.Other;
 
   return (
@@ -135,8 +136,19 @@ export function RewardsScreen({
         <Vote rung="draw" region={region} />
       </article>
 
+      {/* Grand tier */}
+      <article className="rung">
+        <div className="rung-head">
+          <RewardArt kind="trophy" size={52} />
+          <div><span className="chip dim">Recognition</span><h3>{rw.grand.title}</h3></div>
+        </div>
+        <p>{rw.grand.perk}</p>
+        <Progress value={gr.trophies} max={gr.need} label={`${gr.trophies} of ${gr.need} trophies this week${gr.earned ? ". Reached in this preview" : ""}`} />
+        <Vote rung="grand" region={region} />
+      </article>
+
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}>
-        Free to play. 18+ only. Sample prizes, offers and wording are placeholders for review. Nothing here can be won or claimed in this version.
+        Free to play. 18+ (21+ where US rules require). Sample prizes, offers and wording are placeholders for review. Nothing here can be won or claimed in this version.
       </p>
     </div>
   );
@@ -144,11 +156,12 @@ export function RewardsScreen({
 
 /** Compact card on the Play screen, shown once the spins are used or an email is saved. */
 export function RewardsTeaser({
-  rw, region, daysPlayed, points, tiers, emailSaved, notified, onOpen, onNotify,
+  rw, region, daysPlayed, points, tiers, trophies, emailSaved, notified, onOpen, onNotify,
 }: Base & { emailSaved: boolean; notified: boolean; onOpen: () => void; onNotify: () => Promise<string | null> }) {
   const reg = regularProgress(daysPlayed, rw);
   const par = partnerProgress(points, tiers, rw);
   const dr = drawProgress(daysPlayed, rw);
+  const gr = grandProgress(trophies, rw);
   const [msg, setMsg] = useState("");
   return (
     <div className="panel">
@@ -158,6 +171,7 @@ export function RewardsTeaser({
         <li><span>{rw.regular.title} badge</span><span className="tnum">{reg.days} of {reg.need} days</span></li>
         <li><span>{rw.partner.tier} partner offer</span><span className="tnum">{par.points} of {par.need} points</span></li>
         <li><span>{rw.draw.title}</span><span className="tnum">{dr.qualifies ? `${dr.entries} entries` : `${dr.days} of ${dr.need} days to enter`}</span></li>
+        <li><span>{rw.grand.title}</span><span className="tnum">{gr.trophies} of {gr.need} trophies</span></li>
       </ul>
       <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "8px 0" }}>Nothing is awarded in this version. These are examples for the {region} pool.</p>
 

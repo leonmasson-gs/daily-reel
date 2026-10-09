@@ -15,7 +15,7 @@ type Stats = {
   daily: { date: string; active: number; joined: number }[];
   rewards: { viewers: number; notifyOptIns: number; viewersByRegion: { region: string; players: number }[]; interest: { rung: string; label: string; players: number }[] };
   daysPlayedThisWeek: { days: number; players: number }[];
-  progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
+  progress: { tiersThisWeek: { name: string; players: number }[]; sets: { name: string; completed: number }[]; trophyPlayers: number; grandPlayers: number; introCompleted: number; introSkipped: number; tierUps: number; recapsViewed: number };
   fairness: { spins: number; pair: { observed: number | null; published: number }; triple: { observed: number | null; published: number }; reels: { name: string; observed: number | null; published: number }[] };
   guardrails: { agePassed: number; ageBlocked: number; oddsViewed: number };
 };
@@ -168,6 +168,8 @@ export default function AdminStats() {
           <h3 style={{ marginTop: 16 }}>Moments</h3>
           <table className="odds"><tbody>
             <tr><td>Intro completed / skipped</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.introCompleted} / {stats.progress.introSkipped}</td></tr>
+            <tr><td>Players with a trophy this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.trophyPlayers}</td></tr>
+            <tr><td>Players at the Grand tier this week</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.grandPlayers}</td></tr>
             <tr><td>Tier-ups</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.tierUps}</td></tr>
             <tr><td>Weekly recaps viewed</td><td className="tnum" style={{ textAlign: "right" }}>{stats.progress.recapsViewed}</td></tr>
           </tbody></table>

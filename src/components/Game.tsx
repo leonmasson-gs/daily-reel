@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { Glyph } from "./Glyph";
-import { Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
+import { GrandDialog, Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
+import { Friends } from "./Friends";
+import { RewardArt } from "./RewardArt";
 import { ShareDialog } from "./Share";
 import { ResponsibleFooter, type ResponsibleCfg } from "./ResponsibleFooter";
 import { RewardsScreen, RewardsTeaser } from "./Rewards";
@@ -13,6 +15,9 @@ type Sym = { id: string; name: string; icon: string; rarity: string; points: num
 type Cfg = {
   copy: { title: string; tagline: string; footer: string };
   minAge: number;
+  minAgeUS: number;
+  reset: { hour: number; timeZone: string; label: string };
+  trophies: { needed: number; tierLabel: string; note: string };
   tiers: { id: string; name: string; minPoints: number }[];
   sets: { id: string; name: string; symbols: string[]; points: number }[];
   rewards: RewardsCfg;
@@ -28,13 +33,13 @@ type Player = {
   emailSaved: boolean;
   rewardsNotify: boolean;
   rewards: { weeksRegular: number; weeksFull: number };
-  spins: { perDay: number; remaining: number; baseRemaining: number; bonusRemaining: number; bonusCapPerWeek: number; resetsAt: string };
+  spins: { perDay: number; remaining: number; baseRemaining: number; bonusRemaining: number; signupBonusRemaining: number; bonusCapPerWeek: number; resetsAt: string };
   today: { symbols: string[]; outcome: string; points: number; is_bonus: boolean }[];
   collection: Record<string, number>;
   sets: { id: string; name: string; symbols: string[]; points: number; found: number; total: number; complete: boolean }[];
-  week: { start: string; today: string; daysPlayed: string[]; points: number; tier: { id: string; name: string; minPoints: number }; nextTier: { name: string; minPoints: number } | null; pointsToNext: number };
+  week: { start: string; today: string; resetsAt: string; trophies: number; trophiesNeeded: number; grand: boolean; daysPlayed: string[]; points: number; tier: { id: string; name: string; minPoints: number }; nextTier: { name: string; minPoints: number } | null; pointsToNext: number };
 };
-type Tab = "play" | "collection" | "tier" | "invite" | "rewards";
+type Tab = "play" | "collection" | "tier" | "friends" | "rewards";
 type SpinResult = { symbols: string[]; outcome: "triple" | "pair" | "none"; points: number; isBonus: boolean };
 
 const pct = (n: number) => (n * 100 < 1 ? (n * 100).toFixed(2) : (n * 100).toFixed(1)) + "%";
@@ -57,6 +62,8 @@ export default function Game() {
   const [tierUp, setTierUp] = useState<{ from: string; to: string } | null>(null);
   const [sharing, setSharing] = useState(false);
   const [region, setRegionState] = useState("Other");
+  const [minAge, setMinAge] = useState(18);
+  const [grandUp, setGrandUp] = useState(false);
   function setRegion(r: string) {
     setRegionState(r);
     try { window.localStorage.setItem("dr_region", r); } catch { /* not saved */ }
@@ -104,8 +111,9 @@ export default function Game() {
   }, []);
   useEffect(() => {
     const fromHash = (): Tab => {
-      const h = window.location.hash.slice(1) as Tab;
-      return (["collection", "tier", "invite", "rewards"] as Tab[]).includes(h) ? h : "play";
+      let h = window.location.hash.slice(1);
+      if (h === "invite") h = "friends"; // the Invite screen is now Friends
+      return (["collection", "tier", "friends", "rewards"] as string[]).includes(h) ? (h as Tab) : "play";
     };
     setTab(fromHash());
     const onPop = () => { setTab(fromHash()); window.scrollTo({ top: 0 }); };
@@ -122,6 +130,7 @@ export default function Game() {
       let saved: string | null = null;
       try { saved = window.localStorage.getItem("dr_region"); } catch { /* ignore */ }
       setRegionState(saved ?? j.region ?? "Other");
+      if (typeof j.minAge === "number") setMinAge(j.minAge);
     }).catch(() => {});
   }, [load]);
 
@@ -175,7 +184,7 @@ export default function Game() {
     { k: "collection", label: "Collection", icon: <path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z" /> },
     { k: "tier", label: "Tier", icon: <path d="M4 20V13m5 7V9m5 11V5m5 15V11" /> },
     { k: "rewards", label: "Rewards", icon: <path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7C10 3 6 3 7 6c.4 1.2 2.6 1.2 5 1zm0 0c2-4 6-4 5-1-.4 1.2-2.6 1.2-5 1z" /> },
-    { k: "invite", label: "Invite", icon: <path d="M12 3v4m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 14a7 7 0 0 1 14 0" /> },
+    { k: "friends", label: "Friends", icon: <path d="M12 3v4m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 14a7 7 0 0 1 14 0" /> },
   ];
 
   return (
@@ -205,7 +214,7 @@ export default function Game() {
       </header>
 
       {player === null ? (
-        <AgeGate cfg={cfg} onDone={refresh} />
+        <AgeGate cfg={cfg} minAge={minAge} onDone={refresh} />
       ) : (
         <>
           {tab !== "play" && (
@@ -216,7 +225,7 @@ export default function Game() {
           )}
           <button className="meter" onClick={() => { goTab("tier"); track("tier_viewed"); }} aria-label="Open weekly tier">
             <div className="row1">
-              <b>{player.week.tier.name}</b>
+              <b>{player.week.tier.name}{player.week.grand && <span className="chip" style={{ marginLeft: 8 }}>{cfg.trophies.tierLabel}</span>}</b>
               <span className="muted tnum">
                 {player.week.nextTier ? `${player.week.points} of ${player.week.nextTier.minPoints} points to ${player.week.nextTier.name}` : `${player.week.points} points, top tier`}
               </span>
@@ -224,14 +233,16 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} region={region} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} region={region} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
           {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
-          {tab === "invite" && <Invite cfg={cfg} player={player} />}
+          {tab === "friends" && (
+            <Friends symbols={cfg.odds.symbols} minAge={cfg.minAge} minAgeUS={cfg.minAgeUS} bonusCap={cfg.bonusSpinsPerWeekCap} inviteCode={player.inviteCode} />
+          )}
           {tab === "rewards" && (
             <RewardsScreen
               rw={cfg.rewards} region={region} setRegion={setRegion} daysPlayed={player.week.daysPlayed.length} points={player.week.points}
-              tiers={cfg.tiers} tierName={player.week.tier.name} weeks={player.rewards}
+              tiers={cfg.tiers} tierName={player.week.tier.name} weeks={player.rewards} trophies={player.week.trophies}
             />
           )}
 
@@ -256,9 +267,13 @@ export default function Game() {
             tierName: player.week.tier.name,
             points: player.week.points,
             daysPlayed: player.week.daysPlayed.length,
+            trophies: player.week.trophies,
             found: cfg.odds.symbols.filter((x) => (player.collection[x.id] ?? 0) > 0).map((x) => x.id),
           }}
         />
+      )}
+      {!intro && !recap && !tierUp && grandUp && player && (
+        <GrandDialog trophies={player.week.trophies} onClose={() => setGrandUp(false)} />
       )}
       {intro && <Intro onDone={() => closeIntro(false)} onSkip={() => closeIntro(true)} />}
       {!intro && recap && <RecapDialog recap={recap} onClose={closeRecap} />}
@@ -278,7 +293,7 @@ function tierPct(p: Player) {
 
 /* ------------------------------------------------------------------ */
 
-function AgeGate({ cfg, onDone }: { cfg: Cfg; onDone: () => Promise<boolean> }) {
+function AgeGate({ cfg, minAge, onDone }: { cfg: Cfg; minAge: number; onDone: () => Promise<boolean> }) {
   const [dob, setDob] = useState("");
   const [err, setErr] = useState("");
   const [blocked, setBlocked] = useState(false);
@@ -314,9 +329,9 @@ function AgeGate({ cfg, onDone }: { cfg: Cfg; onDone: () => Promise<boolean> }) 
   return (
     <div className="panel">
       <h2>Confirm your age</h2>
-      {invited && <p className="invite-note"><b>A friend invited you.</b> You get your own three free spins a day.</p>}
+      {invited && <p className="invite-note"><b>A friend invited you.</b> You get your own three free spins a day. Friends who invite each other can compare collections on a friends board. It shows only a random nickname, your tier and your symbols.</p>}
       <p>{cfg.copy.tagline}</p>
-      <p className="muted">You must be {cfg.minAge} or over. We check your date of birth and do not store it.</p>
+      <p className="muted">You must be {minAge} or over. We check your date of birth and do not store it.</p>
       <label className="field" htmlFor="dob">Date of birth</label>
       <input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} min={oldest} max={new Date().toISOString().slice(0, 10)} />
       {err && <div className="err" role="alert">{err}</div>}
@@ -448,15 +463,16 @@ function useCountdown(target: string, onDone: () => void) {
   return left;
 }
 
-const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-/** Seven dots, Monday to Sunday. A plain tally: missed days are never marked as lost. */
+/** Seven dots, one for each day of the week (a week starts on Sunday evening). A plain tally: missed days are never marked as lost. */
 function WeekStrip({ week }: { week: Player["week"] }) {
   const played = new Set(week.daysPlayed);
-  const days = DAY_LETTERS.map((letter, i) => {
+  const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(Date.parse(week.start) + i * 86400000).toISOString().slice(0, 10);
-    return { letter, name: DAY_NAMES[i], played: played.has(d), today: d === week.today };
+    const dow = new Date(d + "T00:00:00Z").getUTCDay();
+    return { letter: DAY_LETTERS[dow], name: DAY_NAMES[dow], played: played.has(d), today: d === week.today };
   });
   return (
     <div className="week">
@@ -475,10 +491,28 @@ function WeekStrip({ week }: { week: Player["week"] }) {
   );
 }
 
+/** Three trophy slots. A trophy is earned for each triple match; three in a week reach the Grand tier (a preview). */
+function Trophies({ week, grandLabel }: { week: Player["week"]; grandLabel: string }) {
+  const n = Math.min(week.trophies, week.trophiesNeeded);
+  return (
+    <div className="trophyrow">
+      <div className="slots" role="img" aria-label={`${week.trophies} of ${week.trophiesNeeded} trophies this week`}>
+        {Array.from({ length: week.trophiesNeeded }, (_, i) => (
+          <span key={i} className={i < n ? "slot on" : "slot"}><RewardArt kind="trophy" size={30} /></span>
+        ))}
+      </div>
+      <div className="small tnum">
+        <b>{week.trophies} of {week.trophiesNeeded} trophies</b>
+        <span className="muted"> this week. {week.grand ? `${grandLabel} reached (a preview, nothing is awarded).` : `Match three symbols to earn one. Three reach the ${grandLabel}.`}</span>
+      </div>
+    </div>
+  );
+}
+
 type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
-function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region, onOpenRewards, onNotify }: {
-  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void;
+function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGrand, region, onOpenRewards, onNotify }: {
+  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void; onGrand: () => void;
   region: string; onOpenRewards: () => void; onNotify: () => Promise<string | null>;
 }) {
   const last = player.today.at(-1);
@@ -495,12 +529,13 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
   const [err, setErr] = useState("");
   const [showOdds, setShowOdds] = useState(false);
   const [fresh, setFresh] = useState(false);
+  const [notice, setNotice] = useState("");
   const pts = useCountUp(result?.points ?? 0, runKey);
   const left = player.spins.remaining;
   const untilReset = useCountdown(player.spins.resetsAt, refresh);
 
   async function spin() {
-    setErr(""); setResult(null); setNewSets([]); setHits([false, false, false]); setSettled([false, false, false]); setFresh(false);
+    setErr(""); setNotice(""); setResult(null); setNewSets([]); setHits([false, false, false]); setSettled([false, false, false]); setFresh(false);
     setBusy(true);
     reels.forEach((r) => r.current?.spin());
     const t0 = performance.now();
@@ -545,6 +580,10 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
       await sleep(900); feel.sound("tier"); feel.buzz([40, 60, 40, 60, 120]);
       onTierUp(res.j.tierUp);
     }
+    if (res.j.grandReached) {
+      await sleep(res.j.tierUp ? 300 : 900); feel.sound("tier"); feel.buzz([40, 60, 40, 60, 120]);
+      onGrand();
+    }
   }
 
   const resetTxt = formatLeft(untilReset);
@@ -575,6 +614,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
               <div className="what">{whatText}</div>
               <div className="pts tnum">+{pts} points</div>
               {mult > 1 && <div className="hint small">Symbol points multiplied by {mult}</div>}
+              {result.outcome === "triple" && <div className="bonusline">Trophy earned. {player.week.trophies} of {player.week.trophiesNeeded} this week.</div>}
               {newSets.map((s) => <div key={s.id} className="bonusline">Set complete: {s.name}. +{s.points} bonus points</div>)}
             </>
           ) : busy ? (
@@ -589,9 +629,10 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
         <div className="pips">
           {Array.from({ length: player.spins.perDay }, (_, i) => <span key={i} aria-hidden className={"pip" + (i >= baseUsed ? " on" : "")} />)}
           {Array.from({ length: bonusLeft }, (_, i) => <span key={"b" + i} aria-hidden className="pip bonus on" />)}
-          <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : "All spins used"}</span>
+          <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : `All spins used. New spins at ${cfg.reset.label}`}</span>
         </div>
 
+        {notice && <div className="bonusline" role="status" style={{ textAlign: "center", marginBottom: 8 }}>{notice}</div>}
         <button className="btn" disabled={busy || left <= 0} onClick={spin}>
           {busy ? "Spinning" : left > 0 ? "Spin" : `New spins in ${resetTxt}`}
         </button>
@@ -599,6 +640,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
       </section>
 
       <WeekStrip week={player.week} />
+      <Trophies week={player.week} grandLabel={cfg.trophies.tierLabel} />
 
       <div className="section" style={{ paddingBottom: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
@@ -624,11 +666,13 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
         )}
       </div>
 
-      {(fresh || left === 0) && !player.emailSaved && <EmailCard onSaved={() => setPlayer({ ...player, emailSaved: true })} />}
+      {(fresh || left === 0) && !player.emailSaved && (
+        <EmailCard onSaved={async (bonus) => { await refresh(); setNotice(bonus ? "Saved. Your fourth spin is ready." : "Saved. Reminders are on."); }} />
+      )}
       {(left === 0 || player.emailSaved) && (
         <RewardsTeaser
           rw={cfg.rewards} region={region} daysPlayed={player.week.daysPlayed.length} points={player.week.points} tiers={cfg.tiers}
-          emailSaved={player.emailSaved} notified={player.rewardsNotify} onOpen={onOpenRewards} onNotify={onNotify}
+          trophies={player.week.trophies} emailSaved={player.emailSaved} notified={player.rewardsNotify} onOpen={onOpenRewards} onNotify={onNotify}
         />
       )}
       {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} region={region} />}
@@ -636,7 +680,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, region
   );
 }
 
-function EmailCard({ onSaved }: { onSaved: () => void }) {
+function EmailCard({ onSaved }: { onSaved: (bonus: boolean) => void }) {
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
   const [err, setErr] = useState("");
@@ -644,12 +688,12 @@ function EmailCard({ onSaved }: { onSaved: () => void }) {
     setErr("");
     const r = await fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, consent }) });
     const j = await r.json();
-    if (r.ok) onSaved(); else setErr(j.message ?? "Something went wrong.");
+    if (r.ok) onSaved(Boolean(j.bonus)); else setErr(j.message ?? "Something went wrong.");
   }
   return (
     <div className="panel">
-      <h3>Keep your collection</h3>
-      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Save your symbols to an email address and get a reminder when your daily spins are ready. We use your email only for the reminder you tick below.</p>
+      <h3>Get a fourth spin</h3>
+      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Save your email to get a fourth spin, once, and a reminder when your daily spins are ready. Your collection is kept with your account. We use your email only for the reminder you tick below.</p>
       <a className="linkrow" href="/privacy">How we use your data</a>
       <label className="field" htmlFor="em">Email address</label>
       <input id="em" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -658,7 +702,7 @@ function EmailCard({ onSaved }: { onSaved: () => void }) {
         <span>Send me a reminder when my daily spins are ready. I can unsubscribe at any time.</span>
       </label>
       {err && <div className="err" role="alert">{err}</div>}
-      <button className="btn quiet" onClick={save}>Save my collection</button>
+      <button className="btn quiet" onClick={save}>Save my email</button>
     </div>
   );
 }
@@ -730,10 +774,11 @@ function Tier({ cfg, player, onShare }: { cfg: Cfg; player: Player; onShare: () 
     <div className="section">
       <h2>{week.tier.name} this week</h2>
       <p className="muted tnum">
-        {week.points} points since Monday.{" "}
+        {week.points} points this week.{" "}
         {week.nextTier ? `${week.pointsToNext} more to reach ${week.nextTier.name}.` : "You have reached the top tier."}
       </p>
       <WeekStrip week={week} />
+      <Trophies week={week} grandLabel={cfg.trophies.tierLabel} />
       <ul className="ladder">
         {[...cfg.tiers].reverse().map((t) => {
           const state = t.id === week.tier.id ? "now" : week.points >= t.minPoints ? "done" : "";
@@ -746,28 +791,7 @@ function Tier({ cfg, player, onShare }: { cfg: Cfg; player: Player; onShare: () 
         })}
       </ul>
       <button className="btn quiet" style={{ marginTop: 16 }} onClick={onShare}>Share my week</button>
-      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Tiers start again every Monday. Missing a day never removes points you have already earned.</p>
-    </div>
-  );
-}
-
-function Invite({ cfg, player }: { cfg: Cfg; player: Player }) {
-  const [copied, setCopied] = useState(false);
-  const link = typeof window === "undefined" ? "" : `${window.location.origin}/?ref=${player.inviteCode}`;
-  async function share() {
-    track("invite_copied");
-    if (navigator.share) { try { await navigator.share({ title: "Daily Reel", text: "Three free spins a day. 18+ only.", url: link }); return; } catch {} }
-    await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000);
-  }
-  return (
-    <div className="section">
-      <h2>Invite a friend</h2>
-      <p>When a friend aged {cfg.minAge} or over joins with your link and takes their first spin, you get one bonus spin. The limit is {cfg.bonusSpinsPerWeekCap} bonus spins a week.</p>
-      <label className="field" htmlFor="lnk">Your invite link</label>
-      <input id="lnk" type="text" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
-      <div style={{ height: 12 }} />
-      <button className="btn" onClick={share}>{copied ? "Link copied" : "Share your link"}</button>
-      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Only share it with people aged {cfg.minAge} or over.</p>
+      <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Tiers start again every Sunday at {cfg.reset.label}. Missing a day never removes points you have already earned.</p>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { performSpin } from "../src/lib/spin";
 import { buildState, weekPoints } from "../src/lib/game";
 import { getRecap, markRecapSeen, previousWeekStart } from "../src/lib/recap";
 import { scoreSpin, type SpinResult } from "../src/lib/engine";
-import { utcWeekStart } from "../src/lib/dates";
+import { addDays, playDate, weekStart } from "../src/lib/dates";
 
 let failed = 0;
 const ok = (label: string, cond: boolean, extra?: unknown) => { if (!cond) failed++; console.log(cond ? "PASS" : "FAIL", label, cond ? "" : JSON.stringify(extra)); };
@@ -78,7 +78,7 @@ async function spin(id: string, draw: () => SpinResult) {
 {
   // a set bonus can itself carry a player over a tier line
   const p = await newPlayer();
-  const week = utcWeekStart();
+  const week = weekStart();
   await db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,'2000-01-01',$2,99,'[\"cherry\",\"bell\",\"star\"]','none',112)", [p, week]);
   const r = await spin(p, force("lemon", "clover", "star")); // +9 spin points = 121, no set yet
   ok("112 + 9 crosses 120 into Silver", r.tierUp?.to === "Silver", r.tierUp);
@@ -95,11 +95,12 @@ async function spin(id: string, draw: () => SpinResult) {
 // --- days played ---
 {
   const p = await newPlayer();
-  const week = utcWeekStart();
+  const week = weekStart();
   await db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,$2,$3,1,'[\"cherry\",\"bell\",\"star\"]','none',6)", [p, week, week]);
   await spin(p, force("cherry", "bell", "star"));
   const s = await buildState(p);
-  ok("days played lists distinct play dates this week", s!.week.daysPlayed.length === 2 && s!.week.daysPlayed.includes(week), s!.week.daysPlayed);
+  const expectDays = weekStart() === playDate() ? 1 : 2;
+  ok("days played lists distinct play dates this week", s!.week.daysPlayed.length === expectDays && s!.week.daysPlayed.includes(playDate()) && s!.week.daysPlayed.includes(week), s!.week.daysPlayed);
 }
 
 // --- weekly recap ---
@@ -132,7 +133,7 @@ async function spin(id: string, draw: () => SpinResult) {
 {
   const p = await newPlayer();
   const old = new Date(Date.now() - 21 * 86400000);
-  const w = utcWeekStart(old);
+  const w = weekStart(old);
   await db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,$2,$3,1,'[\"cherry\",\"bell\",\"star\"]','none',6)", [p, w, w]);
   ok("play three weeks ago does not produce a recap", (await getRecap(db.query, p)) === null);
 }
@@ -156,6 +157,87 @@ async function spin(id: string, draw: () => SpinResult) {
   const s = await buildState(p);
   ok("state counts regular weeks (5+ days) and full weeks (7)", s!.rewards.weeksRegular === 2 && s!.rewards.weeksFull === 1, s!.rewards);
   ok("state starts with no rewards opt-in", s!.rewardsNotify === false);
+}
+
+// --- the fourth spin for saving an email, and the order spins are used in ---
+{
+  const p = await newPlayer();
+  await db.query("update players set email_bonus_granted = true where id = $1", [p]);
+  for (let i = 0; i < 3; i++) await spin(p, force("cherry", "bell", "lemon"));
+  let st = await buildState(p);
+  ok("after three daily spins the signup spin is still waiting", st!.spins.remaining === 1 && st!.spins.signupBonusRemaining === 1, st!.spins);
+  await spin(p, force("cherry", "bell", "lemon"));
+  const flag = await db.query<{ is_signup_bonus: boolean; is_bonus: boolean }>("select is_signup_bonus, is_bonus from spins where player_id = $1 order by spin_number desc limit 1", [p]);
+  ok("the fourth spin is flagged as the signup spin", flag[0].is_signup_bonus && flag[0].is_bonus, flag[0]);
+  const r = await db.tx((q) => performSpin(q, p, force("cherry", "bell", "lemon")));
+  ok("there is no fifth spin from an email", r.kind === "no_spins");
+  ok("no email, no fourth spin", (await (async () => { const n = await newPlayer(); for (let i = 0; i < 3; i++) await spin(n, force("cherry", "bell", "lemon")); return (await db.tx((q) => performSpin(q, n, force("cherry", "bell", "lemon")))).kind; })()) === "no_spins");
+}
+{
+  // signup spin first, then the invite bonus spin
+  const inviter = await newPlayer(), friend = await newPlayer();
+  await db.query("update players set invited_by = $2 where id = $1", [friend, inviter]);
+  await db.query("update players set email_bonus_granted = true where id = $1", [inviter]);
+  await spin(friend, force("cherry", "bell", "lemon"));              // friend's first spin grants the inviter a bonus
+  for (let i = 0; i < 3; i++) await spin(inviter, force("cherry", "bell", "lemon"));
+  await spin(inviter, force("cherry", "bell", "lemon"));             // signup
+  await spin(inviter, force("cherry", "bell", "lemon"));             // invite bonus
+  const flags = await db.query<{ is_signup_bonus: boolean }>("select is_signup_bonus from spins where player_id = $1 and is_bonus order by spin_number", [inviter]);
+  ok("signup spin is used before the invite bonus spin", flags.length === 2 && flags[0].is_signup_bonus === true && flags[1].is_signup_bonus === false, flags);
+  ok("then there are no more spins", (await db.tx((q) => performSpin(q, inviter, force("cherry", "bell", "lemon")))).kind === "no_spins");
+}
+
+// --- trophies and the Grand tier ---
+{
+  const p = await newPlayer();
+  const t1 = await spin(p, force("cherry", "cherry", "cherry"));
+  ok("a triple earns a trophy", t1.trophy === true && t1.grandReached === false);
+  const n1 = await spin(p, force("cherry", "bell", "lemon"));
+  ok("no match earns no trophy", n1.trophy === false);
+  const t2 = await spin(p, force("bell", "bell", "bell"));
+  ok("second trophy does not reach the Grand tier", t2.trophy && !t2.grandReached);
+  await db.query("update players set email_bonus_granted = true where id = $1", [p]);
+  const t3 = await spin(p, force("star", "star", "star"));
+  ok("the third trophy reaches the Grand tier", t3.trophy && t3.grandReached === true);
+  let st = await buildState(p);
+  ok("state shows three trophies and the Grand tier", st!.week.trophies === 3 && st!.week.grand === true, st!.week);
+  const q4 = await newPlayer();
+  await db.query("update players set email_bonus_granted = true where id = $1", [q4]);
+  for (const sym of ["cherry", "bell", "lemon", "star"]) await spin(q4, force(sym, sym, sym));
+  const again = await db.query<{ n: number }>("select count(*)::int as n from spins where player_id = $1 and outcome = 'triple'", [q4]);
+  ok("a fourth trophy still counts", again[0].n === 4);
+  const q5 = await newPlayer();
+  await db.query("update players set email_bonus_granted = true where id = $1", [q5]);
+  const flags5: boolean[] = [];
+  for (const sym of ["cherry", "bell", "lemon", "star"]) flags5.push((await spin(q5, force(sym, sym, sym))).grandReached);
+  ok("the Grand tier is announced once, on the third trophy only", flags5.join() === "false,false,true,false", flags5);
+}
+
+// --- the friends board ---
+{
+  const { getBoard, setVisibility, shuffleNickname } = await import("../src/lib/friends");
+  const A = await newPlayer(), B = await newPlayer(), C = await newPlayer(), D = await newPlayer();
+  await db.query("update players set invited_by = $2, email = 'secret@example.test' where id = $1", [B, A]);
+  await db.query("update players set invited_by = $2 where id = $1", [D, B]);
+  await spin(A, force("cherry", "bell", "lemon"));
+  await spin(B, force("star", "star", "gem"));
+  const a = await getBoard(db.query, A), b = await getBoard(db.query, B), c = await getBoard(db.query, C);
+  ok("the inviter sees the friend they invited", a!.friends.length === 1 && a!.friends[0].found!.includes("star"), a!.friends);
+  ok("the friend sees the inviter and the person they invited", b!.friends.length === 2, b!.friends.map((f) => f.nickname));
+  ok("a stranger sees no friends", c!.friends.length === 0);
+  ok("friends of friends are not shown (A does not see D)", !a!.friends.some((f) => f.nickname === b!.friends.find((x) => x.found?.length === 0)?.nickname) || a!.friends.length === 1);
+  ok("nicknames are generated words and numbers", /^[A-Z][a-z]+ [A-Z][a-z]+ \d{2}$/.test(a!.me.nickname), a!.me.nickname);
+  ok("a board never contains an email address or id", !JSON.stringify([a, b]).includes("@") && !JSON.stringify(a).includes(A) && !JSON.stringify(a).includes(B));
+  ok("my own entry shows my symbols", a!.me.found!.join() === "cherry,bell,lemon", a!.me.found);
+  const before = a!.me.nickname;
+  let changed = false;
+  for (let i = 0; i < 8 && !changed; i++) changed = (await shuffleNickname(db.query, A)) !== before;
+  ok("a nickname can be shuffled", changed);
+  await setVisibility(db.query, B, false);
+  const a2 = await getBoard(db.query, A);
+  ok("a friend who hides appears as Private friend with no details", a2!.friends[0].hidden === true && a2!.friends[0].nickname === "Private friend" && a2!.friends[0].found === undefined, a2!.friends[0]);
+  const b2 = await getBoard(db.query, B);
+  ok("someone who hides still sees their own entry", b2!.me.hidden === false && b2!.me.found!.includes("star"));
 }
 
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nAll rule checks passed");

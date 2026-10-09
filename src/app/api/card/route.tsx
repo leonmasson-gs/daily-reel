@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const host = url.host;
   const kind = url.searchParams.get("kind") === "invite" ? "invite" : "week";
-  const footer = "Free to play. 18+ only. No stake, no prizes.";
+  const footer = "Free to play. 18+ (21+ where US rules require). No stake, no prizes.";
 
   if (kind === "invite") {
     return new ImageResponse(
@@ -80,6 +80,7 @@ export async function GET(req: Request) {
   const tier = (config.tiers.find((t) => t.name.toLowerCase() === (url.searchParams.get("tier") ?? "").toLowerCase()) ?? config.tiers[0]).name;
   const points = num(url.searchParams.get("pts"), 99999);
   const days = num(url.searchParams.get("days"), 7);
+  const trophies = num(url.searchParams.get("trophies"), 9);
   const found = new Set((url.searchParams.get("found") ?? "").split(",").filter((id) => config.symbols.some((s) => s.id === id)));
 
   return new ImageResponse(
@@ -103,7 +104,7 @@ export async function GET(req: Request) {
             ))}
           </div>
           <div style={{ display: "flex", fontSize: 32, color: PAPER, marginTop: 24 }}>
-            {found.size} of {config.symbols.length} symbols found. {days} of 7 days played.
+            {found.size} of {config.symbols.length} symbols found. {days} of 7 days played. {trophies} {trophies === 1 ? "trophy" : "trophies"}.
           </div>
         </div>
 

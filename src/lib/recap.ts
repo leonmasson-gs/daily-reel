@@ -1,11 +1,10 @@
 import type { Query } from "./db";
+import { config } from "./config";
 import { tierFor } from "./engine";
 import { weekPoints } from "./game";
-import { utcWeekStart } from "./dates";
+import { previousWeekStart } from "./dates";
 
-export function previousWeekStart(now = new Date()): string {
-  return utcWeekStart(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
-}
+export { previousWeekStart };
 
 export type Recap = {
   weekStart: string;
@@ -17,6 +16,8 @@ export type Recap = {
   triples: number;
   symbolsDiscovered: number;
   setsCompleted: number;
+  trophies: number;
+  grandReached: boolean;
 };
 
 /** Last week's summary, once. Null if there was no play last week or it was already seen. */
@@ -58,6 +59,8 @@ export async function getRecap(q: Query, playerId: string, now = new Date()): Pr
     triples: stats.triples,
     symbolsDiscovered: discovered,
     setsCompleted: sets,
+    trophies: stats.triples,
+    grandReached: stats.triples >= config.trophies.needed,
   };
 }
 

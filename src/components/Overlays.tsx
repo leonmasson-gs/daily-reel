@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { RewardArt } from "./RewardArt";
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
@@ -61,9 +62,9 @@ export function Medal({ tier }: { tier: string }) {
 export function Intro({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }) {
   const [i, setI] = useState(0);
   const steps = [
-    { h: "Three free spins a day", p: "Spin the reels up to three times. Your spins refill every day, and the reels only ever show what you drew." },
-    { h: "Collect symbols and sets", p: "Every symbol you land joins your collection. Complete a set for a one-off bonus." },
-    { h: "Build your weekly tier", p: "Points count towards a tier that starts again every Monday. This game is free to play with no stake and no prizes. The odds are one tap away on the play screen." },
+    { h: "Three free spins a day", p: "Spin the reels up to three times a day. Your spins refill every evening at 18:00 UK time, and the reels only ever show what you drew." },
+    { h: "Collect symbols and sets", p: "Every symbol you land joins your collection. Complete a set for a one-off bonus, and match three symbols to earn a trophy." },
+    { h: "Build your weekly tier", p: "Points count towards a tier that starts again every Sunday evening. This game is free to play with no stake and no prizes. The odds are one tap away on the play screen." },
   ];
   const s = steps[i];
   return (
@@ -91,9 +92,22 @@ export function TierUp({ from, to, pointsToNext, nextName, onClose }: { from: st
   );
 }
 
+export function GrandDialog({ trophies, onClose }: { trophies: number; onClose: () => void }) {
+  return (
+    <Modal title="Grand tier reached" onClose={onClose}>
+      <div className="center">
+        <RewardArt kind="trophy" size={92} />
+        <h2>Grand tier reached</h2>
+        <p>{trophies} trophies this week. This is a preview: nothing is awarded in this version.</p>
+      </div>
+      <button className="btn" onClick={onClose}>Continue</button>
+    </Modal>
+  );
+}
+
 export type Recap = {
   weekStart: string; tier: string; points: number; daysPlayed: number; spins: number;
-  pairs: number; triples: number; symbolsDiscovered: number; setsCompleted: number;
+  pairs: number; triples: number; symbolsDiscovered: number; setsCompleted: number; trophies: number; grandReached: boolean;
 };
 
 export function RecapDialog({ recap, onClose }: { recap: Recap; onClose: () => void }) {
@@ -102,7 +116,7 @@ export function RecapDialog({ recap, onClose }: { recap: Recap; onClose: () => v
     ["Days played", `${recap.daysPlayed} of 7`],
     ["Spins", String(recap.spins)],
     ["Matched pairs", String(recap.pairs)],
-    ["Triples", String(recap.triples)],
+    ["Trophies (triple matches)", String(recap.trophies)],
     ["New symbols found", String(recap.symbolsDiscovered)],
     ["Sets completed", String(recap.setsCompleted)],
   ];

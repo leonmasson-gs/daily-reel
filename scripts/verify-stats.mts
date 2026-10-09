@@ -3,14 +3,16 @@ process.env.ALLOW_MEMORY_DB = "1";
 import { randomUUID } from "node:crypto";
 import { ready, logEvent } from "../src/lib/db";
 import { getStats } from "../src/lib/stats";
-import { utcDate, utcWeekStart } from "../src/lib/dates";
+import { addDays, playDate, weekStart } from "../src/lib/dates";
+// The week a play date belongs to (weeks start on a Sunday play day).
+const weekOf = (date: string) => addDays(date, -new Date(date + "T00:00:00Z").getUTCDay());
 
 let failed = 0;
 const ok = (label: string, cond: boolean, extra?: unknown) => { if (!cond) failed++; console.log(cond ? "PASS" : "FAIL", label, cond ? "" : JSON.stringify(extra)); };
 const near = (a: number | null | undefined, b: number) => a != null && Math.abs(a - b) < 1e-9;
 
 const db = await ready();
-const day = (back: number) => utcDate(new Date(Date.now() - back * 86400000));
+const day = (back: number) => addDays(playDate(), -back);
 const mk = async (extra: Record<string, unknown> = {}) => {
   const id = randomUUID();
   await db.query("insert into players (id, invite_code, email, invited_by) values ($1,$2,$3,$4)", [id, id.slice(0, 8), (extra.email as string) ?? null, (extra.invitedBy as string) ?? null]);
@@ -19,7 +21,7 @@ const mk = async (extra: Record<string, unknown> = {}) => {
 let n = 0;
 const spin = (p: string, date: string, num: number, outcome: string, syms: string[], pts: number) =>
   db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,$2,$3,$4,$5,$6,$7)",
-    [p, date, utcWeekStart(new Date(date)), num, JSON.stringify(syms), outcome, pts]);
+    [p, date, weekOf(date), num, JSON.stringify(syms), outcome, pts]);
 
 const A = await mk();
 const B = await mk({ email: "b@example.com", invitedBy: A });
@@ -29,8 +31,8 @@ await spin(A, day(2), 2, "none", ["cherry", "bell", "star"], 6);
 await spin(A, day(2), 3, "none", ["lemon", "bell", "star"], 7);
 await spin(A, day(1), 1, "triple", ["gem", "gem", "gem"], 120);
 await spin(B, day(0), 1, "none", ["cherry", "clover", "star"], 8);
-await db.query("insert into bonus_grants (inviter_id, invitee_id, week_start) values ($1,$2,$3)", [A, B, utcWeekStart()]);
-await db.query("insert into set_awards (player_id, set_id, week_start, points) values ($1,'everyday',$2,10)", [A, utcWeekStart()]);
+await db.query("insert into bonus_grants (inviter_id, invitee_id, week_start) values ($1,$2,$3)", [A, B, weekStart()]);
+await db.query("insert into set_awards (player_id, set_id, week_start, points) values ($1,'everyday',$2,10)", [A, weekStart()]);
 for (const [name, times] of [["invite_copied", 2], ["offer_viewed", 4], ["age_gate_blocked", 1], ["intro_completed", 2], ["share_card", 3]] as const)
   for (let i = 0; i < times; i++) await logEvent(null, name);
 await logEvent(null, "offer_clicked", { region: "UK" });

@@ -256,3 +256,33 @@ code { font-size: 0.9em; }
 /* Links in running text and standalone text links */
 a { color: var(--carolina); text-underline-offset: 3px; }
 .linkrow { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; font-size: 0.875rem; }
+
+/* Friends board */
+.board { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.boardrow { background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: 14px; padding: 14px; }
+.boardrow.me { border-color: var(--carolina); }
+.boardrow.hidden { opacity: .85; }
+.boardrow .who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.strip8 { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.strip8 svg { width: 30px; height: 30px; display: block; }
+.strip8 .missing svg { filter: grayscale(1) brightness(.5); opacity: .5; }
+.boardtools { display: grid; gap: 12px; margin-top: 16px; }
+
+/* Trophies */
+.trophyrow { display: flex; align-items: center; gap: 14px; padding: 10px 2px 4px; }
+.trophyrow .slots { display: flex; gap: 6px; flex: none; }
+.trophyrow .slot { width: 40px; height: 40px; border-radius: 10px; border: 1.5px dashed var(--line); display: grid; place-items: center; }
+.trophyrow .slot svg { opacity: .28; filter: grayscale(1); }
+.trophyrow .slot.on { border: 1.5px solid var(--mustard); background: rgba(200,138,46,.15); }
+.trophyrow .slot.on svg { opacity: 1; filter: none; }
+
+/* Layouts that must survive large text and 200% zoom */
+.trophyrow { flex-wrap: wrap; }
+.trophyrow > div:last-child { flex: 1 1 150px; min-width: 0; }
+.coll { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+.boardrow .who { min-width: 0; }
+
+.sym { min-width: 0; }
+.sym .nm, .sym .small { overflow-wrap: anywhere; }
+.setrow .head { flex-wrap: wrap; }
+.setrow, .setrow .head b { min-width: 0; overflow-wrap: anywhere; }

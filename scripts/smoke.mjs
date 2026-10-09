@@ -7,10 +7,10 @@ const expect = (l, cond, extra) => (cond ? pass(l) : fail(l, extra));
 
 class Client {
   cookie = "";
-  async call(path, method = "GET", body) {
+  async call(path, method = "GET", body, headers = {}) {
     const res = await fetch(BASE + path, {
       method,
-      headers: { "Content-Type": "application/json", ...(this.cookie ? { cookie: this.cookie } : {}) },
+      headers: { "Content-Type": "application/json", ...(this.cookie ? { cookie: this.cookie } : {}), ...headers },
       body: body ? JSON.stringify(body) : undefined,
     });
     const set = res.headers.get("set-cookie");
@@ -172,6 +172,65 @@ expect("invite page title mentions the friend invite", html.includes("A friend i
   expect("an email made of HTML is refused (400)", (await ec.call("/api/email", "POST", { email: "\"><script>alert(1)</script>@x.co", consent: true })).status === 400);
   expect("a normal email with an apostrophe is accepted", (await ec.call("/api/email", "POST", { email: "o'brien@example.org", consent: true })).status === 200);
   expect("events from a visitor with no player are ignored but answered 200", (await new Client().call("/api/event", "POST", { name: "tier_viewed" })).status === 200);
+}
+
+// ---- the fourth spin for an email, US 21+, trophies, the friends board, the 18:00 reset ----
+{
+  expect("config carries the reset time, trophies and the US age", cfg.reset?.hour === 18 && cfg.reset?.timeZone === "Europe/London" && cfg.trophies?.needed === 3 && cfg.minAgeUS === 21, [cfg.reset, cfg.trophies, cfg.minAgeUS]);
+  expect("Ireland's footer names BeGambleAware (as the brief does)", cfg.responsible.support.IE.name === "BeGambleAware" && !!cfg.responsible.support.IE.url, cfg.responsible.support.IE);
+  expect("the footer states 18+ and 21+ where US rules require", /18\+ in the UK and Ireland, 21\+ where US rules require/.test(cfg.responsible.intro), cfg.responsible.intro);
+  const reg = async (c) => (await (await fetch(BASE + "/api/region", { headers: c ? { "x-vercel-ip-country": c } : {} })).json());
+  expect("US visitors are told 21, everyone else 18", (await reg("US")).minAge === 21 && (await reg("GB")).minAge === 18 && (await reg(null)).minAge === 18);
+  const us = new Client(), uk = new Client();
+  const r19us = await us.call("/api/age-gate", "POST", { dob: yearsAgo(19) }, { "x-vercel-ip-country": "US" });
+  expect("a 19-year-old connecting from the US is refused with the 21 message", r19us.status === 403 && /21/.test(r19us.json.message) && !us.cookie, [r19us.status, r19us.json]);
+  const r19uk = await uk.call("/api/age-gate", "POST", { dob: yearsAgo(19) }, { "x-vercel-ip-country": "GB" });
+  expect("a 19-year-old connecting from the UK is let in", r19uk.status === 200 && !!uk.cookie, r19uk.status);
+  const r22us = await new Client().call("/api/age-gate", "POST", { dob: yearsAgo(22) }, { "x-vercel-ip-country": "US" });
+  expect("a 22-year-old connecting from the US is let in", r22us.status === 200, r22us.status);
+
+  // fourth spin for an email
+  const em = new Client(); await em.call("/api/age-gate", "POST", { dob: ADULT });
+  for (let i = 0; i < 3; i++) await em.call("/api/spin", "POST");
+  expect("before an email there is no fourth spin (429)", (await em.call("/api/spin", "POST")).status === 429);
+  const save1 = await em.call("/api/email", "POST", { email: "fourth-spin@example.test", consent: true });
+  expect("saving an email earns the fourth spin", save1.status === 200 && save1.json.bonus === true, save1.json);
+  expect("the state says a signup spin is waiting", (await em.call("/api/state")).json.player.spins.signupBonusRemaining === 1);
+  const fourth = await em.call("/api/spin", "POST");
+  expect("the fourth spin works and is flagged as a bonus", fourth.status === 200 && fourth.json.result.isBonus === true, fourth.status);
+  expect("there is no fifth spin from the same email", (await em.call("/api/spin", "POST")).status === 429);
+  const again = await em.call("/api/email", "POST", { email: "fourth-spin@example.test", consent: true });
+  expect("saving the same email again earns nothing more", again.status === 200 && again.json.bonus === false, again.json);
+  const other = new Client(); await other.call("/api/age-gate", "POST", { dob: ADULT });
+  const dup = await other.call("/api/email", "POST", { email: "Fourth-Spin@Example.test", consent: true });
+  expect("a second player using the same email does not farm another spin", dup.status === 200 && dup.json.bonus === false, dup.json);
+
+  // trophies
+  const tp = (await em.call("/api/state")).json.player.week;
+  expect("state carries trophies and the Grand tier flag", typeof tp.trophies === "number" && tp.trophiesNeeded === 3 && typeof tp.grand === "boolean" && !!tp.resetsAt, tp);
+  expect("a spin response says whether a trophy or the Grand tier was earned", "trophy" in fourth.json && "grandReached" in fourth.json);
+
+  // friends board
+  const host = new Client(); await host.call("/api/age-gate", "POST", { dob: ADULT });
+  const hostCode = (await host.call("/api/state")).json.player.inviteCode;
+  const guest = new Client(); await guest.call("/api/age-gate", "POST", { dob: ADULT, ref: hostCode });
+  const stranger = new Client(); await stranger.call("/api/age-gate", "POST", { dob: ADULT });
+  await guest.call("/api/spin", "POST");
+  const hb = (await host.call("/api/friends")).json, gb = (await guest.call("/api/friends")).json, sb = (await stranger.call("/api/friends")).json;
+  expect("the host sees the guest on the friends board", hb.friends.length === 1 && hb.friends[0].found.length >= 1, hb);
+  expect("the guest sees the host", gb.friends.length === 1, gb);
+  expect("a stranger sees nobody", sb.friends.length === 0, sb);
+  expect("nicknames are generated words and numbers", /^[A-Z][a-z]+ [A-Z][a-z]+ \d{2}$/.test(hb.me.nickname), hb.me.nickname);
+  expect("the board contains no email address", !JSON.stringify([hb, gb]).includes("@"));
+  expect("the friends board needs an age check (401)", (await new Client().call("/api/friends")).status === 401);
+  const before = hb.me.nickname; let changed = false;
+  for (let i = 0; i < 8 && !changed; i++) { await host.call("/api/friends/nickname", "POST"); changed = (await host.call("/api/friends")).json.me.nickname !== before; }
+  expect("a nickname can be shuffled", changed);
+  expect("the nickname cannot be typed in (only shuffled)", (await host.call("/api/friends/nickname", "POST", { nickname: "<script>" })).json.nickname !== "<script>");
+  await guest.call("/api/friends/visibility", "POST", { visible: false });
+  const hb2 = (await host.call("/api/friends")).json;
+  expect("a friend who hides appears as Private friend", hb2.friends[0].hidden === true && hb2.friends[0].nickname === "Private friend" && hb2.friends[0].found === undefined, hb2.friends[0]);
+  expect("a bad visibility request is refused (400)", (await guest.call("/api/friends/visibility", "POST", { visible: "yes" })).status === 400);
 }
 
 // admin stats are locked

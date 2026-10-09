@@ -201,7 +201,7 @@
       "title": "Weekly draw",
       "minDays": 4,
       "maxEntries": 7,
-      "schedule": "Every Monday at 12:00 UTC (sample)",
+      "schedule": "Every Sunday at 18:00 UK time (sample)",
       "prizes": [
         {
           "id": "voucher",
@@ -259,11 +259,16 @@
       "Prizes have no cash alternative.",
       "Not available in every region. Local rules apply. Promoter details and full terms to be added."
     ],
-    "sampleWinner": "Sample only. Week of 28 September, UK, Casino games: the player ending 4821 won a £100 gift voucher."
+    "sampleWinner": "Sample only. Week ending Sunday 4 October, UK, Casino games: the player ending 4821 won a £100 gift voucher.",
+    "grand": {
+      "title": "Grand tier",
+      "trophiesNeeded": 3,
+      "perk": "Match three symbols to earn a trophy. Three trophies in a week reach the Grand tier. In this preview there is no prize attached, only the recognition."
+    }
   },
   "responsible": {
     "status": "Placeholder wording. Pending legal and responsible gambling review.",
-    "intro": "Daily Reel is free to play and for adults aged 18 or over. There is no stake, no purchase and no prize in this version.",
+    "intro": "Daily Reel is free to play, with no stake and no purchase. 18+ in the UK and Ireland, 21+ where US rules require. There is no prize in this version.",
     "limit": "You can take three spins a day. That limit is fixed and cannot be raised.",
     "help": "If gambling is affecting you or someone you know, free and confidential support is available.",
     "support": {
@@ -273,8 +278,8 @@
         "line": "National Gambling Helpline: 0808 8020 133"
       },
       "IE": {
-        "name": "Support details for Ireland to be added by compliance",
-        "url": null,
+        "name": "BeGambleAware",
+        "url": "https://www.begambleaware.org",
         "line": null
       },
       "US": {
@@ -288,5 +293,16 @@
         "line": null
       }
     }
+  },
+  "minAgeUS": 21,
+  "reset": {
+    "hour": 18,
+    "timeZone": "Europe/London",
+    "label": "18:00 UK time"
+  },
+  "trophies": {
+    "needed": 3,
+    "tierLabel": "Grand tier",
+    "note": "Preview. Nothing is awarded in this version."
   }
 }

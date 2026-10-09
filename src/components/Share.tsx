@@ -8,6 +8,7 @@ type ShareInput = {
   tierName: string;
   points: number;
   daysPlayed: number;
+  trophies: number;
   found: string[];
 };
 
@@ -16,10 +17,10 @@ const track = (name: string) =>
 
 export function ShareDialog({ data, onClose }: { data: ShareInput; onClose: () => void }) {
   const [status, setStatus] = useState("");
-  const qs = new URLSearchParams({ kind: "week", tier: data.tierName, pts: String(data.points), days: String(data.daysPlayed), found: data.found.join(",") });
+  const qs = new URLSearchParams({ kind: "week", tier: data.tierName, pts: String(data.points), days: String(data.daysPlayed), trophies: String(data.trophies), found: data.found.join(",") });
   const cardPath = `/api/card?${qs}`;
   const link = typeof window === "undefined" ? "" : `${window.location.origin}/?ref=${data.inviteCode}`;
-  const text = `I'm ${data.tierName} on Daily Reel this week. Free to play, 18+ only.`;
+  const text = `I'm ${data.tierName} on Daily Reel this week. Free to play. 18+ (21+ where US rules require).`;
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   async function getFile() {

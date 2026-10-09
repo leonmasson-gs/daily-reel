@@ -21,6 +21,19 @@ export async function POST(req: Request) {
   const db = await ready();
   await db.query("update players set email = $2, email_consent = true where id = $1", [playerId, email]);
   await logEvent(playerId, "email_captured");
+
+  // Saving an email earns one extra spin, once. It is not granted again to the same player, and not to a second
+  // player who saves an address that has already earned one, so one email cannot be farmed for spins.
+  let bonus = false;
+  const [me] = await db.query<{ email_bonus_granted: boolean }>("select email_bonus_granted from players where id = $1", [playerId]);
+  if (me && !me.email_bonus_granted) {
+    const taken = await db.query("select 1 from players where email = $2 and email_bonus_granted and id <> $1", [playerId, email]);
+    if (!taken.length) {
+      await db.query("update players set email_bonus_granted = true where id = $1", [playerId]);
+      await logEvent(playerId, "signup_bonus_granted");
+      bonus = true;
+    }
+  }
   // Prototype: reminders are logged, not sent.
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, bonus });
 }

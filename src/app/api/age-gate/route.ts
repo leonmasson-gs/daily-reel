@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "node:crypto";
 import { ready, logEvent } from "@/lib/db";
-import { config } from "@/lib/config";
-import { ageOn } from "@/lib/dates";
+import { ageOn, minAgeFor } from "@/lib/dates";
 import { currentPlayerId, setPlayerCookie } from "@/lib/session";
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -20,10 +19,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_dob", message: "Please enter a valid date of birth." }, { status: 400 });
   }
   // The date of birth is checked and then discarded. We never store it.
-  if (age < config.minAge) {
+  // 18 in most places, 21 for visitors connecting from the US (state rules vary, so the stricter age is used).
+  const minAge = minAgeFor(req.headers.get("x-vercel-ip-country"));
+  if (age < minAge) {
     await logEvent(null, "age_gate_blocked"); // counted only, no identity kept
     return NextResponse.json(
-      { error: "under_age", message: `You must be ${config.minAge} or over to play.` },
+      { error: "under_age", message: `You must be ${minAge} or over to play.` },
       { status: 403 },
     );
   }

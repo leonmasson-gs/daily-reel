@@ -1,8 +1,8 @@
 import type { Query } from "./db";
 import { config } from "./config";
 import { spinOnce, tierFor, type SpinResult } from "./engine";
-import { allowance, ownedSymbols, weekPoints } from "./game";
-import { utcDate, utcWeekStart } from "./dates";
+import { allowance, ownedSymbols, weekPoints, weekTrophies } from "./game";
+import { playDate, weekStart } from "./dates";
 
 export type SpinOutcome =
   | { kind: "no_player" }
@@ -15,6 +15,8 @@ export type SpinOutcome =
       inviter: string | null;
       newSets: { id: string; name: string; points: number }[];
       tierUp: { from: string; to: string } | null;
+      trophy: boolean;
+      grandReached: boolean;
     };
 
 /**
@@ -28,15 +30,18 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
   const a = await allowance(q, playerId);
   if (a.remaining <= 0) return { kind: "no_spins" };
 
-  const week = utcWeekStart();
+  const week = weekStart();
   const before = await weekPoints(q, playerId, week);
+  const trophiesBefore = await weekTrophies(q, playerId, week);
 
   const spin = draw();
+  // Order of use: the three daily spins, then the fourth spin from saving an email, then invite bonus spins.
   const isBonus = a.baseRemaining === 0;
+  const isSignup = isBonus && a.signupRemaining > 0;
   await q(
-    `insert into spins (player_id, play_date, week_start, spin_number, is_bonus, symbols, outcome, points)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [playerId, utcDate(), week, a.spinsToday + 1, isBonus, JSON.stringify(spin.symbols), spin.outcome, spin.points],
+    `insert into spins (player_id, play_date, week_start, spin_number, is_bonus, is_signup_bonus, symbols, outcome, points)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [playerId, playDate(), week, a.spinsToday + 1, isBonus, isSignup, JSON.stringify(spin.symbols), spin.outcome, spin.points],
   );
 
   // A friend's first spin earns their inviter a bonus spin (capped per week when counted).
@@ -70,5 +75,10 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
   const t1 = tierFor(after).current;
   const tierUp = t1.id !== t0.id ? { from: t0.name, to: t1.name } : null;
 
-  return { kind: "ok", spin, isBonus, granted, inviter, newSets, tierUp };
+  // A trophy for every triple match. Three in a week reach the Grand tier (a preview: nothing is awarded).
+  const trophy = spin.outcome === "triple";
+  const trophiesAfter = trophiesBefore + (trophy ? 1 : 0);
+  const grandReached = trophiesBefore < config.trophies.needed && trophiesAfter >= config.trophies.needed;
+
+  return { kind: "ok", spin, isBonus, granted, inviter, newSets, tierUp, trophy, grandReached };
 }
