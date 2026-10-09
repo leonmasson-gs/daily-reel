@@ -286,3 +286,20 @@ a { color: var(--carolina); text-underline-offset: 3px; }
 .sym .nm, .sym .small { overflow-wrap: anywhere; }
 .setrow .head { flex-wrap: wrap; }
 .setrow, .setrow .head b { min-width: 0; overflow-wrap: anywhere; }
+
+/* Region pool: one tidy pill with the region and the product together */
+.poolrow { flex-wrap: wrap; row-gap: 6px; }
+.pool { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: var(--win); overflow: hidden; }
+.pool:focus-within { outline: 2px solid var(--carolina); outline-offset: 2px; }
+.pool select {
+  appearance: none; -webkit-appearance: none;
+  width: auto; min-height: 44px; padding: 0 34px 0 16px;
+  border: 0; border-radius: 0; background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F4F1EA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px;
+  font-weight: 700; font-size: 1rem; cursor: pointer;
+  field-sizing: content; /* fit the chosen value where supported; other browsers fit the longest option */
+}
+.pool select:focus-visible { outline: none; }
+.pool .sep { width: 1.5px; align-self: stretch; margin: 10px 0; background: var(--line); }
+.pool .product { padding: 0 16px 0 14px; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }

@@ -57,10 +57,13 @@ export function RewardsScreen({
 
       <div className="poolrow">
         <label htmlFor="region" className="small muted">Your pool</label>
-        <select id="region" value={region} onChange={(e) => setRegion(e.target.value)}>
-          {rw.regions.map((r) => <option key={r}>{r}</option>)}
-        </select>
-        <b className="small">{rw.product}</b>
+        <div className="pool">
+          <select id="region" value={region} onChange={(e) => setRegion(e.target.value)}>
+            {rw.regions.map((r) => <option key={r}>{r}</option>)}
+          </select>
+          <span className="sep" aria-hidden />
+          <span className="product">{rw.product}</span>
+        </div>
       </div>
       <p className="small muted" style={{ fontFamily: "var(--sans)", marginTop: 6 }}>
         We pick your region from your connection. Change it to see the examples for other regions. Pools are split by region and by product.
