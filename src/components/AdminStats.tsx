@@ -54,6 +54,14 @@ export default function AdminStats() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [key, setKey] = useState("");
   const [err, setErr] = useState("");
+  const [tool, setTool] = useState("");
+
+  async function resetSpins() {
+    setTool("Working…");
+    const r = await fetch("/api/admin/reset-spins", { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    setTool(r.ok ? `Done. ${j.removed} spin${j.removed === 1 ? "" : "s"} cleared. Open the game and play again.` : (j.message ?? "That did not work."));
+  }
 
   const load = useCallback(async () => {
     const r = await fetch("/api/admin/stats", { cache: "no-store" });
@@ -120,6 +128,15 @@ export default function AdminStats() {
       <p className="small muted tnum">
         {stats.totals.players} players, {stats.totals.spinners} have spun, {stats.totals.totalSpins} spins in total, {stats.totals.spinsToday} today. All dates are UTC. Updated {new Date(stats.generatedAt).toLocaleTimeString()}.
       </p>
+
+      <div className="panel" style={{ marginTop: 14 }}>
+        <h3>Testing tool</h3>
+        <p className="small muted" style={{ fontFamily: "var(--sans)" }}>
+          Gives the player in <b>this browser</b> a fresh set of spins for the current day, so you can test or demo again without a private window. It only affects this one player. The cleared spins no longer count in the numbers below.
+        </p>
+        <button className="btn quiet" style={{ width: "auto", padding: "8px 18px" }} onClick={resetSpins}>Give this browser fresh spins</button>
+        {tool && <div className="small" role="status" style={{ marginTop: 10, color: "var(--carolina)" }}>{tool}</div>}
+      </div>
 
       <h2 style={{ margin: "18px 0 10px" }}>The five answers</h2>
       <div className="tiles">

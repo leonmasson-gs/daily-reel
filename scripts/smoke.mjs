@@ -243,6 +243,21 @@ if (process.env.ADMIN_KEY) {
   expect("a player's cookie does not open the stats", (await inviter.call("/api/admin/stats")).status === 401);
   const good = await admin.call("/api/admin/login", "POST", { key: process.env.ADMIN_KEY });
   expect("correct admin key signs in", good.status === 200 && !!admin.cookie, good.status);
+  // testing tool: fresh spins for the player in this browser
+  {
+    const tester = new Client(); await tester.call("/api/age-gate", "POST", { dob: ADULT });
+    const bystander = new Client(); await bystander.call("/api/age-gate", "POST", { dob: ADULT });
+    await bystander.call("/api/spin", "POST");
+    for (let i = 0; i < 3; i++) await tester.call("/api/spin", "POST");
+    expect("the tester is out of spins (429)", (await tester.call("/api/spin", "POST")).status === 429);
+    expect("without the admin key the reset is refused (401)", (await tester.call("/api/admin/reset-spins", "POST")).status === 401);
+    expect("signed in as admin but not a player: asked to play first (400)", (await admin.call("/api/admin/reset-spins", "POST")).status === 400);
+    const both = new Client(); both.cookie = `${tester.cookie}; ${admin.cookie}`;
+    const rr = await both.call("/api/admin/reset-spins", "POST");
+    expect("the testing tool clears this browser's spins", rr.status === 200 && rr.json.removed === 3, rr.json);
+    expect("the tester can spin again after the reset", (await tester.call("/api/spin", "POST")).status === 200);
+    expect("another player's spins are untouched", (await bystander.call("/api/state")).json.player.spins.remaining === 2);
+  }
   const sharesBefore = (await admin.call("/api/admin/stats")).json.answers.friends.shares;
   const flooder = new Client(); await flooder.call("/api/age-gate", "POST", { dob: ADULT });
   for (let i = 0; i < 40; i++) await flooder.call("/api/event", "POST", { name: "share_card" });

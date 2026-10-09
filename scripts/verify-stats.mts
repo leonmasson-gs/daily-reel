@@ -4,8 +4,8 @@ import { randomUUID } from "node:crypto";
 import { ready, logEvent } from "../src/lib/db";
 import { getStats } from "../src/lib/stats";
 import { addDays, playDate, weekStart } from "../src/lib/dates";
-// The week a play date belongs to (weeks start on a Sunday play day).
-const weekOf = (date: string) => addDays(date, -new Date(date + "T00:00:00Z").getUTCDay());
+// The week a play date belongs to (a week starts on the Monday day).
+const weekOf = (date: string) => addDays(date, -((new Date(date + "T00:00:00Z").getUTCDay() + 6) % 7));
 
 let failed = 0;
 const ok = (label: string, cond: boolean, extra?: unknown) => { if (!cond) failed++; console.log(cond ? "PASS" : "FAIL", label, cond ? "" : JSON.stringify(extra)); };

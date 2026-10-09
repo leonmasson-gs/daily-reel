@@ -587,6 +587,9 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
   }
 
   const resetTxt = formatLeft(untilReset);
+  // "today" or "tomorrow", judged in the game's own time zone so it is right wherever the player is.
+  const dayOf = (x: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: cfg.reset.timeZone }).format(x);
+  const resetToday = dayOf(new Date()) === dayOf(new Date(player.spins.resetsAt));
   const baseUsed = player.spins.perDay - player.spins.baseRemaining;
   const bonusLeft = player.spins.bonusRemaining;
 
@@ -629,7 +632,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
         <div className="pips">
           {Array.from({ length: player.spins.perDay }, (_, i) => <span key={i} aria-hidden className={"pip" + (i >= baseUsed ? " on" : "")} />)}
           {Array.from({ length: bonusLeft }, (_, i) => <span key={"b" + i} aria-hidden className="pip bonus on" />)}
-          <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : `All spins used. New spins at ${cfg.reset.label}`}</span>
+          <span className="label tnum">{left > 0 ? `${left} spin${left === 1 ? "" : "s"} left today` : `All spins used. New spins ${resetToday ? "today" : "tomorrow"} at ${cfg.reset.label}`}</span>
         </div>
 
         {notice && <div className="bonusline" role="status" style={{ textAlign: "center", marginBottom: 8 }}>{notice}</div>}

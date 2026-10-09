@@ -4,8 +4,11 @@ import { config } from "./config";
   A "day" in Daily Reel runs from 18:00 to 18:00 UK time (config.reset). A "week" runs from Sunday 18:00 to the
   next Sunday 18:00, so the weekly reset and the Sunday draw happen at the same moment as the evening spin reset.
 
-  A day is named by the calendar date it STARTED on. Spins taken on Tuesday at 17:00 belong to the day that
-  started on Monday at 18:00, so they are the "Monday" day. All of this is computed on the server.
+  A day is named by the calendar date it ENDS on, because that is the day most of it falls on. Spins taken on
+  Friday morning belong to the day that began on Thursday at 18:00 and ends on Friday at 18:00, so it is "Friday".
+  A play through Friday 18:00 starts "Saturday". The week is therefore Monday to Sunday: it starts at 18:00 on
+  Sunday and the Sunday day ends at the next 18:00, which is when the weekly reset and the Sunday draw happen.
+  All of this is computed on the server.
 */
 
 const HOUR = 3_600_000;
@@ -34,35 +37,41 @@ export function addDays(dateStr: string, n: number): string {
   return new Date(Date.parse(dateStr + "T00:00:00Z") + n * DAY).toISOString().slice(0, 10);
 }
 
-/** The play day a moment belongs to, as YYYY-MM-DD (the date the day started on). */
+/** The play day a moment belongs to, as YYYY-MM-DD: the date that day ENDS on. */
 export function playDate(d = new Date()): string {
-  return new Date(wall(d) - config.reset.hour * HOUR).toISOString().slice(0, 10);
+  return new Date(wall(d) + (24 - config.reset.hour) * HOUR).toISOString().slice(0, 10);
 }
 
-/** The first play day of the current week. Weeks start on the play day that begins on a Sunday evening. */
+/** The first play day of the current week: the Monday. (It begins on Sunday at 18:00.) */
 export function weekStart(d = new Date()): string {
   const pd = playDate(d);
-  const dow = new Date(pd + "T00:00:00Z").getUTCDay(); // 0 = Sunday
-  return addDays(pd, -dow);
+  const sinceMonday = (new Date(pd + "T00:00:00Z").getUTCDay() + 6) % 7; // 0 = Monday
+  return addDays(pd, -sinceMonday);
 }
 
 export function previousWeekStart(d = new Date()): string {
   return addDays(weekStart(d), -7);
 }
 
-/** The real instant a play day (named by its start date) begins. */
-function playDayStart(dateStr: string): Date {
+/** The real instant a play day (named by the date it ends on) ends: 18:00 that evening. */
+function playDayEnd(dateStr: string): Date {
   return wallToUtc(Date.parse(dateStr + "T00:00:00Z") + config.reset.hour * HOUR);
 }
 
 /** When the next daily reset happens, as an ISO string. */
 export function nextReset(d = new Date()): string {
-  return playDayStart(addDays(playDate(d), 1)).toISOString();
+  return playDayEnd(playDate(d)).toISOString();
 }
 
-/** When the current week ends and the next one begins. */
+/** When the current week ends and the next one begins: the Sunday day ends at 18:00. */
 export function nextWeekReset(d = new Date()): string {
-  return playDayStart(addDays(weekStart(d), 7)).toISOString();
+  return playDayEnd(addDays(weekStart(d), 6)).toISOString();
+}
+
+/** Is the next reset later today (in the game's time zone) or tomorrow? Used to say "today" or "tomorrow". */
+export function resetIsToday(d = new Date()): boolean {
+  const day = (x: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: config.reset.timeZone }).format(x);
+  return day(d) === day(new Date(nextReset(d)));
 }
 
 export function ageOn(dob: string, today = new Date()): number | null {
