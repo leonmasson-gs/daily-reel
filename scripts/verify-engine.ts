@@ -1,5 +1,6 @@
 import { config, publishedOdds, totalWeight } from "../src/lib/config";
 import { spinOnce, tierFor, scoreSpin } from "../src/lib/engine";
+import { advertDisclosure } from "../src/lib/advert";
 import { ageOn, minAgeFor, playDate, weekStart, previousWeekStart, nextReset, nextWeekReset, resetIsToday } from "../src/lib/dates";
 
 const N = 200_000;
@@ -70,5 +71,10 @@ eq("previous week survives a clock change", previousWeekStart(at("2026-10-25T18:
 eq("the week ends on Sunday 18:00 (17:00Z in BST)", nextWeekReset(at("2026-10-14T12:00:00Z")), "2026-10-18T17:00:00.000Z");
 eq("the week ending after clocks go back is 18:00Z", nextWeekReset(at("2026-10-20T12:00:00Z")), "2026-10-25T18:00:00.000Z");
 eq("US visitors need to be 21", minAgeFor("US"), 21);
+const sup = config.responsible.support;
+eq("US advert says 21+ and gives the US help line", /21\+/.test(advertDisclosure(21, sup.US)) && /ncpgambling\.org/.test(advertDisclosure(21, sup.US)) && /1-800-GAMBLER/.test(advertDisclosure(21, sup.US)), true);
+eq("US advert does not name a UK charity", !/begambleaware/i.test(advertDisclosure(21, sup.US)), true);
+eq("UK advert says 18+ and gives the UK help line", /18\+/.test(advertDisclosure(18, sup.UK)) && /begambleaware\.org/.test(advertDisclosure(18, sup.UK)) && /0808 8020 133/.test(advertDisclosure(18, sup.UK)), true);
+eq("every region has an advert line with an age, T&Cs and a help source", Object.keys(sup).every((r) => /\d\d\+\. T&Cs apply\. Help: \S+/.test(advertDisclosure(18, sup[r as keyof typeof sup]))), true);
 eq("everyone else needs to be 18", [minAgeFor("GB"), minAgeFor("ie"), minAgeFor(null)].join(), "18,18,18");
 process.exit(ok ? 0 : 1);

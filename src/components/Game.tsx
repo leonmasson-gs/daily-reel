@@ -5,6 +5,7 @@ import { Glyph } from "./Glyph";
 import { GrandDialog, Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
 import { Friends } from "./Friends";
 import { RewardArt } from "./RewardArt";
+import { advertDisclosure } from "@/lib/advert";
 import { ShareDialog } from "./Share";
 import { ResponsibleFooter, type ResponsibleCfg } from "./ResponsibleFooter";
 import { RewardsScreen, RewardsTeaser } from "./Rewards";
@@ -24,7 +25,7 @@ type Cfg = {
   responsible: ResponsibleCfg;
   bonusSpinsPerWeekCap: number;
   partnerOffer: null | {
-    sponsor: string; headline: string; body: string; cta: string; href: string; regions: string[]; disclosure: string;
+    sponsor: string; headline: string; body: string; cta: string; href: string;
   };
   odds: { symbols: Sym[]; triple: number; pair: number; none: number; multipliers: { pair: number; triple: number } };
 };
@@ -233,7 +234,7 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} region={region} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} region={region} minAge={minAge} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
           {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
           {tab === "friends" && (
@@ -447,18 +448,32 @@ function formatLeft(ms: number) {
   return h > 0 ? `${h}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`;
 }
 
-/** Counts down to a moment and calls onDone once it passes. */
+/** Counts down to a moment and calls onDone as soon as it passes. */
 function useCountdown(target: string, onDone: () => void) {
   const [now, setNow] = useState(() => Date.now());
-  const fired = useRef(false);
-  useEffect(() => { fired.current = false; }, [target]);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(t);
   }, []);
-  const left = new Date(target).getTime() - now;
+  // Wake up at the exact moment, so the Spin button comes alive straight after the reset rather than at the next 15 second tick.
   useEffect(() => {
-    if (left <= 0 && !fired.current) { fired.current = true; onDone(); }
+    const ms = new Date(target).getTime() - Date.now();
+    if (ms <= 0 || ms > 2_000_000_000) return;
+    const t = setTimeout(() => setNow(Date.now()), ms + 300);
+    return () => clearTimeout(t);
+  }, [target]);
+  const left = new Date(target).getTime() - now;
+  // Once the moment has passed, ask the server. If it has not moved on yet (the two clocks disagree slightly), ask
+  // again quickly at first (1.5s, 1.5s, 3s) and then every 5 seconds, so the wait is never long.
+  const tries = useRef(0);
+  useEffect(() => { tries.current = 0; }, [target]);
+  useEffect(() => {
+    if (left > 0) return;
+    onDone();
+    const wait = [1500, 1500, 3000][tries.current] ?? 5000;
+    tries.current += 1;
+    const t = setTimeout(() => setNow(Date.now()), wait);
+    return () => clearTimeout(t);
   }, [left, onDone]);
   return left;
 }
@@ -511,9 +526,9 @@ function Trophies({ week, grandLabel }: { week: Player["week"]; grandLabel: stri
 
 type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
-function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGrand, region, onOpenRewards, onNotify }: {
+function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGrand, region, minAge, onOpenRewards, onNotify }: {
   cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void; onGrand: () => void;
-  region: string; onOpenRewards: () => void; onNotify: () => Promise<string | null>;
+  region: string; minAge: number; onOpenRewards: () => void; onNotify: () => Promise<string | null>;
 }) {
   const last = player.today.at(-1);
   const start = last ? last.symbols : ["cherry", "lemon", "star"];
@@ -682,7 +697,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
           trophies={player.week.trophies} emailSaved={player.emailSaved} notified={player.rewardsNotify} onOpen={onOpenRewards} onNotify={onNotify}
         />
       )}
-      {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} region={region} />}
+      {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} region={region} minAge={minAge} support={cfg.responsible.support[region] ?? cfg.responsible.support.Other} />}
     </>
   );
 }
@@ -729,7 +744,7 @@ function EmailCard({ onSaved, defaultOpen }: { onSaved: (bonus: boolean) => void
   );
 }
 
-function Offer({ offer, region }: { offer: NonNullable<Cfg["partnerOffer"]>; region: string }) {
+function Offer({ offer, region, minAge, support }: { offer: NonNullable<Cfg["partnerOffer"]>; region: string; minAge: number; support: { name: string; url: string | null; line: string | null } }) {
   useEffect(() => { track("offer_viewed"); }, []);
   return (
     <div className="offer">
@@ -738,7 +753,7 @@ function Offer({ offer, region }: { offer: NonNullable<Cfg["partnerOffer"]>; reg
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}><b style={{ color: "var(--offwhite)" }}>{offer.sponsor}</b>. {offer.body}</p>
       <div style={{ height: 12 }} />
       <a className="btn quiet" href={offer.href} target="_blank" rel="sponsored noopener noreferrer" onClick={() => track("offer_clicked", { region })}>{offer.cta}</a>
-      <p className="small muted" style={{ fontFamily: "var(--sans)", marginBottom: 0 }}>{offer.disclosure}</p>
+      <p className="small muted" style={{ fontFamily: "var(--sans)", marginBottom: 0 }}>{advertDisclosure(minAge, support)}</p>
     </div>
   );
 }

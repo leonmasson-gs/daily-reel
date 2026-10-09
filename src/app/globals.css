@@ -310,3 +310,27 @@ a { color: var(--carolina); text-underline-offset: 3px; }
 
 /* The odds and share links sit right under the Spin button */
 .section.links { border-top: 0; padding: 0 2px 4px; }
+
+/* Windows high contrast and other forced-colour modes: the system replaces our colours, so every control needs a real
+   border to keep its edges, and anything that is only a coloured fill (progress, dots, symbols) needs help. */
+@media (forced-colors: active) {
+  .btn, .iconbtn, .meter, .nav button, .backbar, .brandbtn { border: 2px solid ButtonText; }
+  .btn:disabled { border-color: GrayText; color: GrayText; }
+  .nav button[aria-current=page] { border-color: Highlight; color: Highlight; }
+  .brandbtn { border-color: transparent; }
+  .reel-win, .sym, .boardrow, .panel, .offer, .prize, .dialog { border: 2px solid CanvasText; }
+  .reels { border: 2px solid CanvasText; }
+  /* the symbols are drawn in their own colours: keep them */
+  .cell svg, .sym svg, .strip8 svg, .odds svg, .glyphs svg, .medal, .trophyrow svg { forced-color-adjust: none; }
+  /* filled bars, dots and chips become outlines plus a Highlight fill */
+  .bar { border: 1px solid CanvasText; }
+  .bar > div { forced-color-adjust: none; background: Highlight; }
+  .pip { border: 2px solid CanvasText; }
+  .pip.on { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+  .day i { border-color: CanvasText; }
+  .day.played i { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+  .trophyrow .slot.on { border-color: Highlight; }
+  .chip, .tag, .here { border: 1px solid CanvasText; }
+  .pool { border-color: CanvasText; }
+  :focus-visible { outline: 3px solid Highlight; }
+}
