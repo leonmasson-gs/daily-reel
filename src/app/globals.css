@@ -303,3 +303,10 @@ a { color: var(--carolina); text-underline-offset: 3px; }
 .pool select:focus-visible { outline: none; }
 .pool .sep { width: 1.5px; align-self: stretch; margin: 10px 0; background: var(--line); }
 .pool .product { padding: 0 16px 0 14px; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+
+/* The slim "get a fourth spin" row */
+.emailteaser { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.emailteaser > div { flex: 1 1 160px; min-width: 0; }
+
+/* The odds and share links sit right under the Spin button */
+.section.links { border-top: 0; padding: 0 2px 4px; }

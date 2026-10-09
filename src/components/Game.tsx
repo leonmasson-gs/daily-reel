@@ -642,10 +642,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
         {err && <div className="err" role="alert">{err}</div>}
       </section>
 
-      <WeekStrip week={player.week} />
-      <Trophies week={player.week} grandLabel={cfg.trophies.tierLabel} />
-
-      <div className="section" style={{ paddingBottom: 6 }}>
+      <div className="section links">
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
           <button className="link" onClick={() => { setShowOdds(!showOdds); if (!showOdds) track("odds_viewed"); }} aria-expanded={showOdds}>
             {showOdds ? "Hide the odds" : "See the odds"}
@@ -669,9 +666,16 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
         )}
       </div>
 
-      {(fresh || left === 0) && !player.emailSaved && (
-        <EmailCard onSaved={async (bonus) => { await refresh(); setNotice(bonus ? "Saved. Your fourth spin is ready." : "Saved. Reminders are on."); }} />
+      {!player.emailSaved && (
+        <EmailCard
+          defaultOpen={fresh || left === 0}
+          onSaved={async (bonus) => { await refresh(); setNotice(bonus ? "Saved. Your fourth spin is ready." : "Saved. Reminders are on."); }}
+        />
       )}
+
+      <WeekStrip week={player.week} />
+      <Trophies week={player.week} grandLabel={cfg.trophies.tierLabel} />
+
       {(left === 0 || player.emailSaved) && (
         <RewardsTeaser
           rw={cfg.rewards} region={region} daysPlayed={player.week.daysPlayed.length} points={player.week.points} tiers={cfg.tiers}
@@ -683,7 +687,11 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
   );
 }
 
-function EmailCard({ onSaved }: { onSaved: (bonus: boolean) => void }) {
+function EmailCard({ onSaved, defaultOpen }: { onSaved: (bonus: boolean) => void; defaultOpen: boolean }) {
+  // Always on the play screen until an email is saved. It starts as a slim row, and opens by itself after a spin
+  // or when the spins are used, so there is always an obvious place to add an email.
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen]);
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
   const [err, setErr] = useState("");
@@ -692,6 +700,17 @@ function EmailCard({ onSaved }: { onSaved: (bonus: boolean) => void }) {
     const r = await fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, consent }) });
     const j = await r.json();
     if (r.ok) onSaved(Boolean(j.bonus)); else setErr(j.message ?? "Something went wrong.");
+  }
+  if (!open) {
+    return (
+      <div className="panel emailteaser">
+        <div>
+          <h3>Get a fourth spin</h3>
+          <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "2px 0 0" }}>Save your email for one extra spin.</p>
+        </div>
+        <button className="btn quiet" style={{ width: "auto", padding: "10px 18px" }} onClick={() => setOpen(true)} aria-expanded={false}>Add my email</button>
+      </div>
+    );
   }
   return (
     <div className="panel">
