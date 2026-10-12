@@ -10,14 +10,6 @@ type Base = { rw: RewardsCfg; region: string; daysPlayed: number; points: number
 const track = (name: string, extra?: object) =>
   fetch("/api/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, ...extra }) }).catch(() => {});
 
-const VOTES = "dr_reward_votes";
-function readVotes(): string[] {
-  try { return JSON.parse(window.localStorage.getItem(VOTES) ?? "[]"); } catch { return []; }
-}
-function writeVotes(v: string[]) {
-  try { window.localStorage.setItem(VOTES, JSON.stringify(v)); } catch { /* not saved */ }
-}
-
 function Progress({ value, max, label }: { value: number; max: number; label: string }) {
   const pct = Math.max(max ? 3 : 0, Math.min(100, Math.round((value / max) * 100)));
   return (
@@ -28,15 +20,6 @@ function Progress({ value, max, label }: { value: number; max: number; label: st
   );
 }
 
-function Vote({ rung, region }: { rung: "regular" | "partner" | "draw" | "grand"; region: string }) {
-  const [voted, setVoted] = useState(false);
-  useEffect(() => { setVoted(readVotes().includes(rung)); }, [rung]);
-  return (
-    <button className="btn quiet" style={{ marginTop: 14 }} disabled={voted} onClick={() => { setVoted(true); writeVotes([...readVotes(), rung]); track("reward_interest", { rung, region }); }}>
-      {voted ? "Noted, thanks" : "I'd play for this"}
-    </button>
-  );
-}
 
 export function RewardsScreen({
   rw, region, setRegion, daysPlayed, points, tiers, tierName, weeks, trophies,
@@ -50,10 +33,8 @@ export function RewardsScreen({
 
   return (
     <div className="section">
-      <h2>Rewards preview</h2>
-      <div className="previewtag" role="note">
-        <b>Preview. Not live.</b> Nothing is awarded in this version. Every reward, prize and piece of wording below is a sample for review.
-      </div>
+      <h2>Rewards</h2>
+      <p className="small muted rwnote" role="note"><span className="tag">Preview. Not live.</span> Internal examples to show the look and feel. Nothing is awarded.</p>
 
       <div className="poolrow">
         <label htmlFor="region" className="small muted">Your pool</label>
@@ -81,7 +62,6 @@ export function RewardsScreen({
         <p className="small muted tnum" style={{ fontFamily: "var(--sans)", margin: "6px 0 0" }}>
           Regular weeks so far: {weeks.weeksRegular}. Full weeks ({rw.regular.fullWeekDays} of 7 days): {weeks.weeksFull}.
         </p>
-        <Vote rung="regular" region={region} />
       </article>
 
       {/* Incentive */}
@@ -93,7 +73,7 @@ export function RewardsScreen({
         <p>Reach {rw.partner.tier} tier in a week to unlock an offer from our main sponsor.</p>
         <Progress value={par.points} max={par.need} label={`${par.points} of ${par.need} points. You are ${tierName} this week${par.earned ? ". Unlocked in this preview" : ""}`} />
         <div className="offer" style={{ marginBottom: 0 }}>
-          <span className="tag">Sample partner offer · Advertisement</span>
+          <span className="tag">Partner offer · Advertisement</span>
           <h3 style={{ marginTop: 10 }}>{offer.headline}</h3>
           <p className="small" style={{ fontFamily: "var(--sans)", margin: "4px 0" }}><b>{rw.partner.sponsor}</b></p>
           <p className="small muted" style={{ fontFamily: "var(--sans)", margin: 0 }}>{offer.body}</p>
@@ -101,27 +81,25 @@ export function RewardsScreen({
             {par.earned ? "Unlocked in this preview" : `Locked until ${rw.partner.tier}`}
           </div>
         </div>
-        <Vote rung="partner" region={region} />
       </article>
 
       {/* Draw */}
       <article className="rung">
         <div className="rung-head">
-          <RewardArt kind="voucher" size={52} />
+          <RewardArt kind="ticket" size={52} />
           <div><span className="chip dim">Draw</span><h3>{rw.draw.title}</h3></div>
         </div>
         <p>Play on at least {rw.draw.minDays} days in a week to enter. You get one entry for each day you play, up to {rw.draw.maxEntries}. It rewards coming back, not spinning more.</p>
         <Progress value={dr.days} max={dr.need} label={dr.qualifies ? `${dr.entries} of ${dr.maxEntries} entries this week` : `${dr.days} of ${dr.need} days to enter. No entries yet`} />
-        <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "10px 0 0" }}>Draw: {rw.draw.schedule}. One winner per pool, so this is the {region} pool for {rw.product.toLowerCase()}.</p>
+        <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "10px 0 0" }}>Draw: {rw.draw.schedule}. One winner per pool, so this is the {region} pool for {rw.product.toLowerCase()}. Free to enter. No purchase necessary.</p>
 
-        <h3 style={{ marginTop: 16 }}>Sample prizes for {region}</h3>
-        <div className="prizes" tabIndex={0} aria-label="Sample prizes">
+        <h3 style={{ marginTop: 16 }}>This week&apos;s prizes</h3>
+        <div className="prizes" tabIndex={0} aria-label="This week's prizes">
           {rw.draw.prizes.map((p) => (
             <div key={p.id} className="prize">
               <RewardArt kind={p.art as ArtKind} size={56} />
               <b>{p.name}</b>
               <span className="small muted">{p.value[region as keyof typeof p.value] ?? p.value.Other}</span>
-              <span className="tag">Sample</span>
             </div>
           ))}
         </div>
@@ -131,27 +109,26 @@ export function RewardsScreen({
           <div className="small">{rw.sampleWinner}</div>
         </div>
 
-        <details className="terms">
-          <summary>Sample draw wording, for legal review</summary>
-          <ul>{rw.terms.map((t) => <li key={t}>{t}</li>)}</ul>
-          <p className="small muted" style={{ fontFamily: "var(--sans)" }}>Placeholder wording. It has not been reviewed by legal and must not be used as live terms.</p>
-        </details>
-        <Vote rung="draw" region={region} />
       </article>
 
       {/* Grand tier */}
       <article className="rung">
         <div className="rung-head">
           <RewardArt kind="trophy" size={52} />
-          <div><span className="chip dim">Recognition</span><h3>{rw.grand.title}</h3></div>
+          <div><span className="chip dim">Top prize</span><h3>{rw.grand.title}</h3></div>
         </div>
         <p>{rw.grand.perk}</p>
-        <Progress value={gr.trophies} max={gr.need} label={`${gr.trophies} of ${gr.need} trophies this week${gr.earned ? ". Reached in this preview" : ""}`} />
-        <Vote rung="grand" region={region} />
+        <Progress value={gr.trophies} max={gr.need} label={`${gr.trophies} of ${gr.need} trophies this week${gr.earned ? ". Reached" : ""}`} />
+        {rw.grand.prize && (
+          <div className="grandprize">
+            <RewardArt kind="trophy" size={44} />
+            <div><b>{rw.grand.prize.name}</b><div className="small muted">{rw.grand.prize.detail}</div></div>
+          </div>
+        )}
       </article>
 
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}>
-        Free to play. 18+ (21+ where US rules require). Sample prizes, offers and wording are placeholders for review. Nothing here can be won or claimed in this version.
+        Free to play. 18+ (21+ where US rules require). Example rewards for internal review. Nothing here can be won or claimed in this version.
       </p>
     </div>
   );
@@ -169,14 +146,14 @@ export function RewardsTeaser({
   return (
     <div className="panel">
       <span className="tag">Preview. Not live.</span>
-      <h3 style={{ marginTop: 10 }}>Rewards we are considering</h3>
+      <h3 style={{ marginTop: 10 }}>Rewards</h3>
       <ul className="miniladder">
         <li><span>{rw.regular.title} badge</span><span className="tnum">{reg.days} of {reg.need} days</span></li>
         <li><span>{rw.partner.tier} partner offer</span><span className="tnum">{par.points} of {par.need} points</span></li>
-        <li><span>{rw.draw.title}</span><span className="tnum">{dr.qualifies ? `${dr.entries} entries` : `${dr.days} of ${dr.need} days to enter`}</span></li>
-        <li><span>{rw.grand.title}</span><span className="tnum">{gr.trophies} of {gr.need} trophies</span></li>
+        <li><span>{rw.draw.title}: {rw.draw.prizes[0]?.name.toLowerCase()} and more</span><span className="tnum">{dr.qualifies ? `${dr.entries} entries` : `${dr.days} of ${dr.need} days to enter`}</span></li>
+        <li><span>{rw.grand.title}: {rw.grand.prize?.name ?? "recognition"}</span><span className="tnum">{gr.trophies} of {gr.need} trophies</span></li>
       </ul>
-      <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "8px 0" }}>Nothing is awarded in this version. These are examples for the {region} pool.</p>
+      <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "8px 0" }}>Internal examples for the {region} pool. Nothing is awarded in this version.</p>
 
       {emailSaved && !notified && (
         <div className="notify">
@@ -189,7 +166,7 @@ export function RewardsTeaser({
       )}
       {emailSaved && notified && <p className="small" style={{ color: "var(--carolina)", fontWeight: 700, margin: "0 0 10px" }}>Thanks. We will email you once if rewards go live.</p>}
 
-      <button className="btn" onClick={onOpen}>See the rewards preview</button>
+      <button className="btn" onClick={onOpen}>See all rewards</button>
     </div>
   );
 }

@@ -495,3 +495,9 @@ html[data-layout="desktop"] .tabpage { width: 100%; max-width: 760px; }
 html[data-layout="desktop"] .rg { max-width: 760px; }
 html[data-layout="desktop"] .daily { gap: 10px; }
 html[data-layout="desktop"] .dtile { padding: 11px 12px 12px; }
+
+/* Rewards: example content */
+.rwnote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 14px; }
+.grandprize { display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--mustard) 12%, transparent); border: 1px solid color-mix(in srgb, var(--mustard) 45%, transparent); }
+.grandprize svg { flex: none; }
+.grandprize .small { font-family: var(--sans); margin-top: 2px; }

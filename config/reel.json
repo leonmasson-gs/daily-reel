@@ -164,7 +164,7 @@
     }
   ],
   "rewards": {
-    "label": "Preview. Not live. Nothing is awarded in this version.",
+    "label": "Preview. Not live. Internal examples, nothing is awarded.",
     "product": "Casino games",
     "regions": [
       "UK",
@@ -176,7 +176,7 @@
       "title": "Regular",
       "daysNeeded": 5,
       "fullWeekDays": 7,
-      "perk": "A Regular badge on your profile and a lasting count of your regular weeks. It has no cash value."
+      "perk": "A Regular badge on your profile. Every fourth Regular week also earns a club scarf, sent to your door."
     },
     "partner": {
       "title": "Exclusive partner offer",
@@ -205,50 +205,50 @@
       "title": "Weekly draw",
       "minDays": 4,
       "maxEntries": 7,
-      "schedule": "Every Sunday at 18:00 UK time (sample)",
+      "schedule": "Every Sunday at 18:00 UK time",
       "prizes": [
         {
-          "id": "voucher",
-          "name": "Gift voucher",
-          "art": "voucher",
-          "value": {
-            "UK": "£100",
-            "IE": "€100",
-            "US": "$100",
-            "Other": "100 in local currency"
-          }
-        },
-        {
-          "id": "hamper",
-          "name": "Merchandise hamper",
-          "art": "hamper",
-          "value": {
-            "UK": "£60 retail value",
-            "IE": "€60 retail value",
-            "US": "$60 retail value",
-            "Other": "Retail value to be confirmed"
-          }
-        },
-        {
-          "id": "experience",
-          "name": "Experience credit",
+          "id": "tickets",
+          "name": "Two match tickets",
           "art": "ticket",
           "value": {
-            "UK": "£150 towards an event",
-            "IE": "€150 towards an event",
-            "US": "$150 towards an event",
-            "Other": "Value to be confirmed"
+            "UK": "A pair of seats at a top-flight league match",
+            "IE": "A pair of seats at a top-flight league match",
+            "US": "A pair of seats at a pro football game",
+            "Other": "A pair of seats at a top-flight match near you"
           }
         },
         {
-          "id": "subscription",
-          "name": "Premium subscription",
-          "art": "star",
+          "id": "jersey",
+          "name": "Signed home jersey",
+          "art": "jersey",
           "value": {
-            "UK": "3 months",
-            "IE": "3 months",
-            "US": "3 months",
-            "Other": "3 months"
+            "UK": "Signed by the first-team squad and framed",
+            "IE": "Signed by the first-team squad and framed",
+            "US": "Signed by the starting line-up and framed",
+            "Other": "Signed by the first-team squad and framed"
+          }
+        },
+        {
+          "id": "ball",
+          "name": "Signed match ball",
+          "art": "ball",
+          "value": {
+            "UK": "Official size 5 ball, signed by the captain",
+            "IE": "Official size 5 ball, signed by the captain",
+            "US": "Official game ball, signed by the quarterback",
+            "Other": "Official size 5 ball, signed by the captain"
+          }
+        },
+        {
+          "id": "tour",
+          "name": "Stadium tour for four",
+          "art": "stadium",
+          "value": {
+            "UK": "Dressing room, tunnel and pitchside photos",
+            "IE": "Dressing room, tunnel and pitchside photos",
+            "US": "Locker room, tunnel and field-level photos",
+            "Other": "Dressing room, tunnel and pitchside photos"
           }
         }
       ]
@@ -263,11 +263,15 @@
       "Prizes have no cash alternative.",
       "Not available in every region. Local rules apply. Promoter details and full terms to be added."
     ],
-    "sampleWinner": "Sample only. Week ending Sunday 4 October, UK, Casino games: the player ending 4821 won a £100 gift voucher.",
+    "sampleWinner": "Last week's winner (example): the player ending 4821 won two match tickets.",
     "grand": {
       "title": "Grand tier",
       "trophiesNeeded": 3,
-      "perk": "Match three symbols to earn a trophy. Three trophies in a week reach the Grand tier. In this preview there is no prize attached, only the recognition."
+      "perk": "Three trophies in a week reach the Grand tier and enter you into the monthly Grand prize draw.",
+      "prize": {
+        "name": "VIP hospitality for two",
+        "detail": "Lounge seats, a three-course meal and a meet-and-greet with a first-team player."
+      }
     }
   },
   "responsible": {

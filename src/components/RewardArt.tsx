@@ -4,7 +4,7 @@ import { useSkin } from "./SkinContext";
 
 // Simple flat artwork for the sample rewards. All of it is placeholder. Colours come from the skin.
 
-export type ArtKind = "badge" | "gift" | "voucher" | "hamper" | "ticket" | "star" | "trophy";
+export type ArtKind = "badge" | "gift" | "voucher" | "hamper" | "ticket" | "star" | "trophy" | "jersey" | "ball" | "stadium";
 
 export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: number; label?: string }) {
   const { gold: GOLD, sky: SKY, ink: INK, panel: PANEL, copper: COPPER, paper: PAPER } = useSkin().art;
@@ -54,6 +54,35 @@ export function RewardArt({ kind, size = 56, label }: { kind: ArtKind; size?: nu
           <path d="M6 18 H58 V27 A5 5 0 0 0 58 37 V46 H6 V37 A5 5 0 0 0 6 27 Z" fill={SKY} />
           <path d="M40 18 V46" stroke={INK} strokeOpacity=".4" strokeWidth="2.5" strokeDasharray="3 4" />
           <polygon points="23,24 25.6,29.6 31.7,30.2 27.1,34.2 28.5,40.2 23,37 17.5,40.2 18.9,34.2 14.3,30.2 20.4,29.6" fill={INK} fillOpacity=".5" />
+        </svg>
+      );
+    case "jersey":
+      return (
+        <svg {...common}>
+          <polygon points="22,8 32,13 42,8 58,18 51,31 45,28 45,57 19,57 19,28 13,31 6,18" fill={SKY} strokeLinejoin="round" />
+          <path d="M25 8 Q32 19 39 8" fill="none" stroke={INK} strokeOpacity=".45" strokeWidth="3" />
+          <text x="32" y="44" textAnchor="middle" fontSize="15" fontWeight="800" fontFamily="Arial, sans-serif" fill={PAPER}>10</text>
+          <path d="M22 51 C27 47 31 53 36 49 C39 47 41 50 43 49" fill="none" stroke={GOLD} strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      );
+    case "ball":
+      return (
+        <svg {...common}>
+          <circle cx="32" cy="32" r="25" fill={PAPER} />
+          <polygon points="32,20 43,28 39,41 25,41 21,28" fill={INK} fillOpacity=".75" />
+          <path d="M32 20 V8 M43 28 L55 24 M39 41 L46 52 M25 41 L18 52 M21 28 L9 24" stroke={INK} strokeOpacity=".55" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M12 46 C20 40 24 50 32 44 C36 41 40 45 44 43" fill="none" stroke={GOLD} strokeWidth="3" strokeLinecap="round" />
+        </svg>
+      );
+    case "stadium":
+      return (
+        <svg {...common}>
+          <ellipse cx="32" cy="40" rx="27" ry="14" fill={PANEL} stroke={GOLD} strokeWidth="2.5" />
+          <ellipse cx="32" cy="40" rx="17" ry="7.5" fill="#2F8F5B" />
+          <path d="M32 33 V47 M15 40 H49" stroke={PAPER} strokeOpacity=".6" strokeWidth="1.5" />
+          <path d="M12 30 V14 M52 30 V14" stroke={GOLD} strokeWidth="3" strokeLinecap="round" />
+          <rect x="7" y="10" width="10" height="6" rx="2" fill={PAPER} />
+          <rect x="47" y="10" width="10" height="6" rx="2" fill={PAPER} />
         </svg>
       );
     case "trophy":
