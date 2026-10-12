@@ -56,6 +56,17 @@ export default function AdminStats() {
   const [err, setErr] = useState("");
   const [tool, setTool] = useState("");
   const [anticipation, setAnticipation] = useState(false);
+  const [replay, setReplay] = useState("");
+  async function replayToday() {
+    setReplay("Resetting…");
+    try {
+      const r = await fetch("/api/admin/demo-reset", { method: "POST" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setReplay(j.message ?? "The reset did not work."); return; }
+      try { window.localStorage.removeItem("dr_pulse_day"); } catch { /* fine */ }
+      setReplay(`Done. ${j.spinsCleared} spin${j.spinsCleared === 1 ? "" : "s"} cleared. Open the game in this browser to play today again.`);
+    } catch { setReplay("We could not reach the game. Check your connection and try again."); }
+  }
   useEffect(() => { try { setAnticipation(window.localStorage.getItem("dr_demo_anticipation") === "1"); } catch { /* off */ } }, []);
   function toggleAnticipation(on: boolean) {
     setAnticipation(on);
@@ -142,6 +153,13 @@ export default function AdminStats() {
         </p>
         <button className="btn quiet" style={{ width: "auto", padding: "8px 18px" }} onClick={resetSpins}>Give this browser fresh spins</button>
         {tool && <div className="small" role="status" style={{ marginTop: 10, color: "var(--carolina)" }}>{tool}</div>}
+      </div>
+
+      <div className="panel">
+        <h3>Presenter: replay today</h3>
+        <p className="small" style={{ fontFamily: "var(--sans)" }}>Clears today&apos;s spins, today&apos;s mission, sets finished today and the saved email for the player in <b>this browser</b>, so you can run the demo again without a private window. Other players are not touched.</p>
+        <button className="btn quiet" onClick={replayToday}>Replay today in this browser</button>
+        {replay && <p className="small" role="status" style={{ fontFamily: "var(--sans)", marginTop: 8 }}>{replay}</p>}
       </div>
 
       <div className="panel">

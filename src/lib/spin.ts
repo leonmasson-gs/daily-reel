@@ -4,6 +4,7 @@ import { cryptoRng, spinOnce, tierFor, type SpinResult } from "./engine";
 import { featuredSymbol } from "./featured";
 import { boostForDay } from "./boosts";
 import { awardMissionIfDone, type Mission } from "./missions";
+import { isFirstPlayDay } from "./firstday";
 import { allowance, ownedSymbols, weekPoints, weekTrophies } from "./game";
 import { playDate, weekStart } from "./dates";
 
@@ -28,7 +29,7 @@ export type SpinOutcome =
  * One spin, inside a transaction the caller provides.
  * `draw` is injectable so tests can force a result. Production always uses the default.
  */
-export async function performSpin(q: Query, playerId: string, draw: () => SpinResult = () => spinOnce(cryptoRng, featuredSymbol(playDate()), boostForDay(playDate()).spec)): Promise<SpinOutcome> {
+export async function performSpin(q: Query, playerId: string, drawFn?: () => SpinResult): Promise<SpinOutcome> {
   const players = await q<{ invited_by: string | null }>("select invited_by from players where id = $1", [playerId]);
   if (!players.length) return { kind: "no_player" };
 
@@ -39,6 +40,9 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
   const before = await weekPoints(q, playerId, week);
   const trophiesBefore = await weekTrophies(q, playerId, week);
 
+  // On a player's first play day there is no boost and no mission (see firstday.ts).
+  const firstDay = await isFirstPlayDay(q, playerId);
+  const draw = drawFn ?? (() => spinOnce(cryptoRng, featuredSymbol(playDate()), firstDay ? undefined : boostForDay(playDate()).spec));
   const spin = draw();
   // Order of use: the three daily spins, then the fourth spin from saving an email, then invite bonus spins.
   const isBonus = a.baseRemaining === 0;
@@ -76,7 +80,7 @@ export async function performSpin(q: Query, playerId: string, draw: () => SpinRe
   }
 
   // The day's mission pays once, the first time it is complete.
-  const missionDone = await awardMissionIfDone(q, playerId);
+  const missionDone = firstDay ? null : await awardMissionIfDone(q, playerId);
 
   const after = await weekPoints(q, playerId, week);
   const t0 = tierFor(before).current;

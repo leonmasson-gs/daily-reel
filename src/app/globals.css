@@ -427,3 +427,19 @@ html[data-skin="tgb"] h2, html[data-skin="tgb"] h3 { overflow-wrap: anywhere; }
 .viewtoggle { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 @media (forced-colors: active) { .viewtoggle .pillbtn { border: 2px solid ButtonText; } }
 .lb li.gap { background: none; border: 0; padding: 0 14px; }
+
+/* Extra lines under a result: a short, plain list */
+.extras { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font-family: var(--sans); font-size: .875rem; line-height: 1.35; color: var(--carolina); text-align: center; }
+.tomorrow { font-family: var(--sans); margin: 12px 2px 4px; }
+
+/* Very narrow screens (a small phone at 200% zoom): icons only in the menu, the label stays for screen readers */
+@media (max-width: 300px) {
+  .nav button { gap: 0; min-height: 52px; }
+  .nav .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .nav button svg { width: 24px; height: 24px; }
+  .top { flex-wrap: wrap; }
+  .brand { font-size: 1.25rem; }
+}
+/* Let long lines wrap instead of pushing the page sideways at very large text sizes */
+.featured .small, .todayrow .small { min-width: 0; overflow-wrap: anywhere; }
+.pillbtn { max-width: 100%; overflow-wrap: anywhere; }

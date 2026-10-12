@@ -40,6 +40,7 @@ type Player = {
   featured: { id: string; multiplier: number };
   boost: { id: string; label: string; text: string };
   mission: { id: string; title: string; points: number; symbol: string | null; done: boolean; awarded: boolean };
+  firstDay: boolean;
   emailSaved: boolean;
   rewardsNotify: boolean;
   rewards: { weeksRegular: number; weeksFull: number };
@@ -297,7 +298,7 @@ export default function Game() {
             {tabs.map((t) => (
               <button key={t.k} aria-current={tab === t.k ? "page" : undefined} onClick={() => { goTab(t.k); if (t.k === "tier") track("tier_viewed"); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{t.icon}</svg>
-                {t.label}
+                <span className="lbl">{t.label}</span>
               </button>
             ))}
           </div></nav>
@@ -709,11 +710,16 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
               <div className="what">{whatText}</div>
               <div className="pts tnum">+{pts} points</div>
               {mult > 1 && <div className="hint small">Symbol points multiplied by {mult}</div>}
-              {(result.featuredHits ?? 0) > 0 && <div className="bonusline">Featured symbol: its points counted double.</div>}
-              {wildNames.length > 0 && <div className="bonusline">Wild: it stood in as {wildNames.join(" and ")}.</div>}
-              {missionDone && <div className="bonusline">Mission complete: +{missionDone.points} points.</div>}
-              {result.outcome === "triple" && <div className="bonusline">Trophy earned. {player.week.trophies} of {player.week.trophiesNeeded} this week.</div>}
-              {newSets.map((s) => <div key={s.id} className="bonusline">Set complete: {s.name}. +{s.points} bonus points</div>)}
+              {/* What happened on the reels comes first. Anything extra is listed below it, each line saying what it is. */}
+              {(() => {
+                const extras: string[] = [];
+                if (wildNames.length > 0) extras.push(`The Wild counted as ${wildNames.join(" and ")}.`);
+                if ((result.featuredHits ?? 0) > 0) extras.push(`${featured?.name ?? "The featured symbol"} scored double today.`);
+                if (result.outcome === "triple") extras.push(`Trophy earned: ${player.week.trophies} of ${player.week.trophiesNeeded} this week.`);
+                for (const s of newSets) extras.push(`Collection: ${s.name} set finished, +${s.points} points.`);
+                if (missionDone) extras.push(`Mission done: +${missionDone.points} points.`);
+                return extras.length ? <ul className="extras">{extras.map((x) => <li key={x}>{x}</li>)}</ul> : null;
+              })()}
             </>
           ) : busy ? (
             <div className="hint small">Spinning</div>
@@ -772,6 +778,9 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
         )}
       </div>
 
+      {player.firstDay ? (
+        left === 0 && <p className="small muted tomorrow">From tomorrow you also get a daily mission and a daily boost.</p>
+      ) : (
       <div className="today" role="group" aria-label="Today">
         {player.boost.id !== "quiet" && (
           <div className="todayrow"><span className="tag">Boost</span><span className="small"><b>{player.boost.label}.</b> {player.boost.text}</span></div>
@@ -784,6 +793,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
           </span>
         </div>
       </div>
+      )}
       {left === 0 && <Pulse day={player.week.today} />}
 
       {!player.emailSaved && (

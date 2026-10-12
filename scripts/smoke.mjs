@@ -294,6 +294,23 @@ expect("invite page title mentions the friend invite", html.includes("A friend i
   expect("the invite code still works with the one-tap check", (await new Client().call("/api/age-gate", "POST", { over: true, ref: "zzzzzz" })).status === 200);
 }
 
+// presenter replay
+if (process.env.ADMIN_KEY) {
+  const pc = new Client(); await pc.call("/api/age-gate", "POST", { over: true });
+  expect("replay needs the admin sign-in (401)", (await pc.call("/api/admin/demo-reset", "POST")).status === 401);
+  for (let i = 0; i < 3; i++) await pc.call("/api/spin", "POST");
+  expect("all three spins used", (await pc.call("/api/state")).json.player.spins.remaining === 0);
+  const playerCookie = pc.cookie;
+  const login = await pc.call("/api/admin/login", "POST", { key: process.env.ADMIN_KEY });
+  pc.cookie = `${playerCookie}; ${pc.cookie}`;             // the presenter's browser holds both cookies
+  const rr = await pc.call("/api/admin/demo-reset", "POST");
+  expect("replay clears today's spins for this browser's player", login.status === 200 && rr.status === 200 && rr.json.spinsCleared === 3, [login.status, rr.json]);
+  expect("after replay the player has three spins again", (await pc.call("/api/state")).json.player.spins.remaining === 3);
+  const fresh = new Client(); await fresh.call("/api/admin/login", "POST", { key: process.env.ADMIN_KEY });
+  expect("replay with no player in the browser is refused (400)", (await fresh.call("/api/admin/demo-reset", "POST")).status === 400);
+  expect("a new player starts on their first play day", (await pc.call("/api/state")).json.player.firstDay === true);
+}
+
 // admin stats are locked
 const nobody = new Client();
 expect("stats are refused without signing in (401)", (await nobody.call("/api/admin/stats")).status === 401);

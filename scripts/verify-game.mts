@@ -305,7 +305,9 @@ const noMission = (p: string) => db.query("insert into mission_awards (player_id
   const { missionFor, missionStatus } = await import("../src/lib/missions");
   const { boostForDay } = await import("../src/lib/boosts");
   const m = missionFor(playDate());
-  const p = await newPlayer();
+  // A player who played on an earlier day (missions and boosts start on the second play day)
+  const returning = async () => { const id = await newPlayer(); await db.query("insert into spins (player_id, play_date, week_start, spin_number, symbols, outcome, points) values ($1,'2000-01-01','2000-01-01',1,'[]','none',0)", [id]); return id; };
+  const p = await returning();
   const st0 = await buildState(p);
   ok("state shows today's mission, not yet done", st0!.mission.id === m.id && st0!.mission.done === false && st0!.mission.awarded === false, st0!.mission);
   // play whatever completes today's mission
@@ -323,6 +325,14 @@ const noMission = (p: string) => db.query("insert into mission_awards (player_id
   ok("state shows it done and paid", st1!.mission.done && st1!.mission.awarded);
   const r2 = await spin(p, force("gem", "gem", "gem"));
   ok("a mission never pays twice in a day", r2.missionDone === null);
+  // day one: no mission paid and no boost applied, even when the mission would be complete
+  const d1 = await newPlayer();
+  ok("a brand-new player is on their first play day", (await buildState(d1))!.firstDay === true);
+  ok("a returning player is not", (await buildState(p))!.firstDay === false);
+  const d1r = await spin(d1, force(...(winning[m.id] as [string, string, string])));
+  ok("on day one the mission is never paid", d1r.missionDone === null, d1r.missionDone);
+  const plain = (await import("../src/lib/engine")).scoreSpin(d1r.spin.symbols, (await import("../src/lib/featured")).featuredSymbol(playDate())).points;
+  ok("on day one points ignore the boost (featured symbol only)", d1r.spin.points === plain, [d1r.spin.points, plain]);
   const q = await newPlayer();
   ok("a different player's mission is not complete", (await missionStatus(db.query, q)).done === false);
   ok("state names today's boost", st1!.boost.id === boostForDay(playDate()).id && typeof st1!.boost.text === "string", st1!.boost);

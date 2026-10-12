@@ -5,6 +5,7 @@ import { nextReset, nextWeekReset, playDate, weekStart } from "./dates";
 import { featuredSymbol } from "./featured";
 import { boostForDay } from "./boosts";
 import { missionStatus } from "./missions";
+import { isFirstPlayDay } from "./firstday";
 
 export async function allowance(q: Query, playerId: string) {
   const today = playDate();
@@ -119,6 +120,7 @@ export async function buildState(playerId: string) {
     featured: { id: featuredSymbol(playDate()), multiplier: config.featured.multiplier },
     boost: (({ id, label, text }) => ({ id, label, text }))(boostForDay(playDate())),
     mission: await missionStatus(q, playerId),
+    firstDay: await isFirstPlayDay(q, playerId),
     rewards: { weeksRegular: weeks.regular, weeksFull: weeks.full },
     spins: {
       perDay: config.spinsPerDay,
