@@ -400,9 +400,6 @@ html[data-skin="tgb"] h2 { font-size: min(1.5rem, 8.5vw); }
 html[data-skin="tgb"] h2, html[data-skin="tgb"] h3 { overflow-wrap: anywhere; }
 
 /* Today: the boost and the mission */
-.today { display: grid; gap: 8px; margin: 12px 0 4px; }
-.todayrow { display: flex; align-items: center; gap: 10px; }
-.todayrow .small { font-family: var(--sans); line-height: 1.4; }
 .tick { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: .8125rem; font-weight: 800; color: var(--win); }
 .tick.on { background: var(--mustard); border-color: var(--mustard); }
 .pulse h3 { margin-bottom: 10px; }
@@ -441,7 +438,7 @@ html[data-skin="tgb"] h2, html[data-skin="tgb"] h3 { overflow-wrap: anywhere; }
   .brand { font-size: 1.25rem; }
 }
 /* Let long lines wrap instead of pushing the page sideways at very large text sizes */
-.featured .small, .todayrow .small { min-width: 0; overflow-wrap: anywhere; }
+.featured .small { min-width: 0; overflow-wrap: anywhere; }
 .pillbtn { max-width: 100%; overflow-wrap: anywhere; }
 
 /* ---------------------------------------------------------------------------------------------------------------
