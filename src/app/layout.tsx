@@ -20,7 +20,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 // Runs before the page paints: use the skin from the address (?skin=...) or the one saved on this device, so there is no flash.
 const pickSkin = (fallback: string) =>
-  `try{var ids=${JSON.stringify(Object.keys(SKINS))};var q=new URLSearchParams(location.search).get('skin');var s=q&&ids.indexOf(q)>-1?q:localStorage.getItem('dr_skin');document.documentElement.dataset.skin=ids.indexOf(s)>-1?s:'${fallback}'}catch(e){}`;
+  `try{var ids=${JSON.stringify(Object.keys(SKINS))};var q=new URLSearchParams(location.search).get('skin');var s=q&&ids.indexOf(q)>-1?q:localStorage.getItem('dr_skin');document.documentElement.dataset.skin=ids.indexOf(s)>-1?s:'${fallback}'}catch(e){}try{var vs=['auto','mobile','desktop'];var vq=new URLSearchParams(location.search).get('view');var v=vs.indexOf(vq)>-1?vq:localStorage.getItem('dr_view');if(vs.indexOf(v)<0)v='auto';document.documentElement.dataset.layout=v==='auto'?(matchMedia('(min-width: 900px)').matches?'desktop':'mobile'):v}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const fallback = defaultSkinId();

@@ -118,7 +118,7 @@ export async function buildState(playerId: string) {
     emailSaved: Boolean(player.email),
     rewardsNotify: player.rewards_notify,
     featured: { id: featuredSymbol(playDate()), multiplier: config.featured.multiplier },
-    boost: (({ id, label, text }) => ({ id, label, text }))(boostForDay(playDate())),
+    boost: (({ id, label, text, short }) => ({ id, label, text, short }))(boostForDay(playDate())),
     mission: await missionStatus(q, playerId),
     firstDay: await isFirstPlayDay(q, playerId),
     rewards: { weeksRegular: weeks.regular, weeksFull: weeks.full },

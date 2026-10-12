@@ -38,7 +38,7 @@ type Cfg = {
 type Player = {
   inviteCode: string;
   featured: { id: string; multiplier: number };
-  boost: { id: string; label: string; text: string };
+  boost: { id: string; label: string; text: string; short: string };
   mission: { id: string; title: string; points: number; symbol: string | null; done: boolean; awarded: boolean };
   firstDay: boolean;
   emailSaved: boolean;
@@ -61,6 +61,10 @@ const track = (name: string, extra?: object) =>
 
 /* ------------------------------------------------------------------ */
 
+const VIEWS = ["auto", "mobile", "desktop"] as const;
+type View = (typeof VIEWS)[number];
+const DESKTOP_QUERY = "(min-width: 900px)";
+
 /** The look-only changes a skin makes to the settings: its name and tagline, and what the symbols are called. */
 function applySkin(cfg: Cfg, skin: Skin): Cfg {
   return {
@@ -81,6 +85,27 @@ export default function Game() {
   const skin = skinById(skinId);
   // The skin changes how things look and what the symbols are called. It never changes a rule, an odd or a compliance line.
   const cfg = useMemo(() => (cfgRaw ? applySkin(cfgRaw, skin) : null), [cfgRaw, skin]);
+  // View for testing: Auto follows the screen width, Mobile and Desktop force one layout.
+  const [viewPref, setViewPref] = useState<View>("auto");
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("view");
+      const saved = window.localStorage.getItem("dr_view");
+      const v = (VIEWS as readonly string[]).includes(q ?? "") ? q : (VIEWS as readonly string[]).includes(saved ?? "") ? saved : "auto";
+      setViewPref(v as View);
+    } catch { /* stays on auto */ }
+  }, []);
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_QUERY);
+    const apply = () => { document.documentElement.dataset.layout = viewPref === "auto" ? (mq.matches ? "desktop" : "mobile") : viewPref; };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [viewPref]);
+  function chooseView(v: View) {
+    setViewPref(v);
+    try { window.localStorage.setItem("dr_view", v); } catch { /* not saved */ }
+  }
   function chooseSkin(id: string) {
     setSkinId(id);
     document.documentElement.dataset.skin = id;
@@ -282,6 +307,8 @@ export default function Game() {
           </button>
 
           {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} onBonus={() => setBonus(true)} region={region} minAge={minAge} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
+          {tab !== "play" && (
+          <div className="tabpage">
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
           {tab === "tier" && <Tier cfg={cfg} player={player} onShare={() => setSharing(true)} />}
           {tab === "friends" && (
@@ -294,6 +321,8 @@ export default function Game() {
             />
           )}
 
+          </div>
+          )}
           <nav className="nav" aria-label="Main"><div className="in">
             {tabs.map((t) => (
               <button key={t.k} aria-current={tab === t.k ? "page" : undefined} onClick={() => { goTab(t.k); if (t.k === "tier") track("tier_viewed"); }}>
@@ -310,6 +339,14 @@ export default function Game() {
           <span className="small muted">Skin</span>
           {Object.values(SKINS).map((s) => (
             <button key={s.id} className="pillbtn" aria-pressed={skinId === s.id} onClick={() => chooseSkin(s.id)}>{s.label}</button>
+          ))}
+        </div>
+      )}
+      {cfg.skin.allowSwitch && (
+        <div className="skinswitch" role="group" aria-label="View">
+          <span className="small muted">View</span>
+          {VIEWS.map((v) => (
+            <button key={v} className="pillbtn" aria-pressed={viewPref === v} onClick={() => chooseView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>
           ))}
         </div>
       )}
@@ -677,6 +714,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
   }
 
   const featured = cfg.odds.symbols.find((s) => s.id === player.featured?.id);
+  const missionName = player.mission.title.replace("{symbol}", cfg.odds.symbols.find((s) => s.id === player.mission.symbol)?.name ?? "symbol");
   const resetTxt = formatLeft(untilReset);
   // "today" or "tomorrow", judged in the game's own time zone so it is right wherever the player is.
   const dayOf = (x: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: cfg.reset.timeZone }).format(x);
@@ -696,7 +734,8 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
   const mult = result ? (result.outcome === "triple" ? cfg.odds.multipliers.triple : result.outcome === "pair" ? cfg.odds.multipliers.pair : 1) : 1;
 
   return (
-    <>
+    <div className="playgrid">
+      <div className="playmain">
       <section className="machine" aria-label="Reel">
         <div className="reels">
           {[0, 1, 2].map((i) => (
@@ -741,12 +780,7 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
             {Array.from({ length: 14 }, (_, i) => <i key={i} style={{ "--a": `${i * (360 / 14)}deg` } as React.CSSProperties} />)}
           </div>
         )}
-        {featured && (
-          <div className="featured">
-            <Glyph id={featured.id} rarity={featured.rarity} title={featured.name} />
-            <span className="small">Today's featured symbol is <b>{featured.name}</b>. Its points count double. Odds are unchanged.</span>
-          </div>
-        )}
+        <DailyTiles player={player} featured={featured} missionName={missionName} />
         {notice && <div className="bonusline" role="status" style={{ textAlign: "center", marginBottom: 8 }}>{notice}</div>}
         <button className="btn" disabled={busy || left <= 0} onClick={spin}>
           {busy ? "Spinning" : left > 0 ? "Spin" : `New spins in ${resetTxt}`}
@@ -778,22 +812,9 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
         )}
       </div>
 
-      {player.firstDay ? (
-        left === 0 && <p className="small muted tomorrow">From tomorrow you also get a daily mission and a daily boost.</p>
-      ) : (
-      <div className="today" role="group" aria-label="Today">
-        {player.boost.id !== "quiet" && (
-          <div className="todayrow"><span className="tag">Boost</span><span className="small"><b>{player.boost.label}.</b> {player.boost.text}</span></div>
-        )}
-        <div className="todayrow">
-          <span className={"tick" + (player.mission.done ? " on" : "")} aria-hidden>{player.mission.done ? "✓" : ""}</span>
-          <span className="small">
-            <b>Today's mission:</b> {player.mission.title.replace("{symbol}", cfg.odds.symbols.find((s) => s.id === player.mission.symbol)?.name ?? "symbol")}{" "}
-            <span className="muted">+{player.mission.points} points{player.mission.done ? ". Done" : ""}</span>
-          </span>
-        </div>
       </div>
-      )}
+
+      <aside className="playside" aria-label="Your week">
       {left === 0 && <Pulse day={player.week.today} />}
 
       {!player.emailSaved && (
@@ -813,7 +834,51 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
         />
       )}
       {(fresh || left === 0) && cfg.partnerOffer && <Offer offer={cfg.partnerOffer} region={region} minAge={minAge} support={cfg.responsible.support[region] ?? cfg.responsible.support.Other} />}
-    </>
+      </aside>
+    </div>
+  );
+}
+
+/**
+ * Today at a glance, inside the machine: the featured symbol, the boost and the mission as small tiles. On a player's
+ * first day the boost and mission are replaced by one tile saying they start tomorrow.
+ */
+function DailyTiles({ player, featured, missionName }: { player: Player; featured?: Sym; missionName: string }) {
+  const m = player.mission;
+  return (
+    <div className="daily" role="group" aria-label="Today">
+      {featured && (
+        <div className="dtile">
+          <span className="dlabel">Featured</span>
+          <span className="dmain"><Glyph id={featured.id} rarity={featured.rarity} title={featured.name} />{featured.name}</span>
+          <span className="dsub">Scores double</span>
+          <span className="sr-only">Today&apos;s featured symbol is {featured.name}. Its points count double. Odds are unchanged.</span>
+        </div>
+      )}
+      {player.firstDay ? (
+        <div className="dtile soon">
+          <span className="dlabel">Tomorrow</span>
+          <span className="dmain">Mission and boost</span>
+          <span className="dsub">Start on your second day</span>
+        </div>
+      ) : (
+        <>
+          {player.boost.id !== "quiet" && (
+            <div className="dtile">
+              <span className="dlabel">Boost</span>
+              <span className="dmain">{player.boost.label}</span>
+              <span className="dsub">{player.boost.short}</span>
+              <span className="sr-only">{player.boost.text}</span>
+            </div>
+          )}
+          <div className={"dtile" + (m.done ? " done" : "")}>
+            <span className="dlabel">{m.done ? "Mission done" : "Mission"}</span>
+            <span className="dmain">{missionName}</span>
+            <span className="dsub">{m.done ? `+${m.points} points earned` : `+${m.points} points`}</span>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -347,21 +347,25 @@
       "pair-power": {
         "label": "Pair power",
         "text": "Pairs count x3 instead of x2.",
-        "pairMult": 3
+        "pairMult": 3,
+        "short": "Pairs x3 today"
       },
       "rare-bonus": {
         "label": "Rare bonus",
         "text": "Every Rare, Epic or Legendary symbol adds 2 points.",
-        "rareBonus": 2
+        "rareBonus": 2,
+        "short": "+2 per rare symbol"
       },
       "triple-surge": {
         "label": "Triple surge",
         "text": "Triples count x7 instead of x5.",
-        "tripleMult": 7
+        "tripleMult": 7,
+        "short": "Triples x7 today"
       },
       "quiet": {
         "label": "Quiet day",
-        "text": "No boost today. The featured symbol still counts double."
+        "text": "No boost today. The featured symbol still counts double.",
+        "short": "No boost today"
       }
     },
     "rotation": [

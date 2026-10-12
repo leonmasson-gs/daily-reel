@@ -443,3 +443,55 @@ html[data-skin="tgb"] h2, html[data-skin="tgb"] h3 { overflow-wrap: anywhere; }
 /* Let long lines wrap instead of pushing the page sideways at very large text sizes */
 .featured .small, .todayrow .small { min-width: 0; overflow-wrap: anywhere; }
 .pillbtn { max-width: 100%; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Today tiles, inside the machine
+   --------------------------------------------------------------------------------------------------------------- */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.daily { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 2px 0 12px; }
+.dtile { position: relative; display: grid; gap: 3px; align-content: start; min-width: 0; padding: 9px 10px 10px; border-radius: 12px; background: color-mix(in srgb, var(--win) 60%, transparent); border: 1px solid var(--line-soft); font-family: var(--sans); text-align: left; }
+.dlabel { font-size: .75rem; font-weight: 600; color: var(--muted); }
+.dmain { display: flex; align-items: center; gap: 6px; font-size: .875rem; font-weight: 700; line-height: 1.25; color: var(--offwhite); overflow-wrap: anywhere; }
+.dmain svg { width: 20px; height: 20px; flex: none; display: block; }
+.dsub { font-size: .75rem; line-height: 1.3; color: var(--mustard-hi); }
+.dtile.done { border-color: var(--mustard); background: color-mix(in srgb, var(--mustard) 14%, transparent); }
+.dtile.done .dlabel { color: var(--mustard-hi); }
+.dtile.soon { border-style: dashed; border-color: var(--line); }
+.dtile.soon .dsub { color: var(--muted); }
+@media (max-width: 340px) { .daily { grid-auto-flow: row; } }
+@media (forced-colors: active) { .dtile { border: 1px solid CanvasText; } .dtile.done { border: 2px solid Highlight; } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Layouts. The page carries data-layout="mobile" or "desktop" (set from the screen width, or forced by the View toggle).
+   --------------------------------------------------------------------------------------------------------------- */
+.playgrid, .playmain, .playside { min-width: 0; }
+
+/* Mobile on a wide screen: show it as a phone-width column, so it reads as the mobile view rather than a stray strip */
+@media (min-width: 600px) {
+  html[data-layout="mobile"] body { background: var(--win); }
+  html[data-layout="mobile"] .app:not(.wide) { background: var(--bg); min-height: 100dvh; box-shadow: 0 0 0 1px var(--line-soft), 0 24px 70px rgba(0,0,0,.45); }
+  html[data-layout="mobile"] .nav { background: none; backdrop-filter: none; border-top: 0; }
+  html[data-layout="mobile"] .nav .in { background: color-mix(in srgb, var(--bg) 96%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line-soft); }
+}
+
+/* Desktop: a contained page (not edge to edge), the menu as tabs under the header, and the play screen in two columns */
+html[data-layout="desktop"] .app:not(.wide) { max-width: 1120px; padding: 22px 40px 48px; display: flex; flex-direction: column; }
+html[data-layout="desktop"] .app:not(.wide) > .top { order: -3; padding-bottom: 8px; }
+html[data-layout="desktop"] .app:not(.wide) > .nav { order: -2; }
+html[data-layout="desktop"] .nav { position: static; background: none; backdrop-filter: none; border-top: 0; border-bottom: 1px solid var(--line-soft); padding: 0; margin: 0 0 20px; }
+html[data-layout="desktop"] .nav .in { max-width: none; margin: 0; display: flex; gap: 2px; }
+html[data-layout="desktop"] .nav button { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; font-size: .9375rem; border-radius: 10px 10px 0 0; }
+html[data-layout="desktop"] .nav button svg { width: 20px; height: 20px; }
+html[data-layout="desktop"] .nav button:hover { color: var(--offwhite); background: color-mix(in srgb, var(--panel) 50%, transparent); }
+html[data-layout="desktop"] .nav button[aria-current=page],
+html[data-skin="tgb"][data-layout="desktop"] .nav button[aria-current=page] { color: var(--offwhite); box-shadow: inset 0 -3px 0 var(--mustard); }
+html[data-layout="desktop"] .nav .lbl { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+html[data-layout="desktop"] .backbar { display: none; }
+html[data-layout="desktop"] .meter { padding-bottom: 22px; }
+html[data-layout="desktop"] .playgrid { display: grid; grid-template-columns: minmax(380px, 560px) minmax(300px, 1fr); gap: 36px; align-items: start; }
+html[data-layout="desktop"] .playside > :first-child { margin-top: 0; }
+html[data-layout="desktop"] .playside .panel:first-child, html[data-layout="desktop"] .playside > *:first-child { margin-top: 0; }
+html[data-layout="desktop"] .tabpage { width: 100%; max-width: 760px; }
+html[data-layout="desktop"] .rg { max-width: 760px; }
+html[data-layout="desktop"] .daily { gap: 10px; }
+html[data-layout="desktop"] .dtile { padding: 11px 12px 12px; }
