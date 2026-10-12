@@ -64,7 +64,7 @@ export function Intro({ onDone, onSkip }: { onDone: () => void; onSkip: () => vo
   const [i, setI] = useState(0);
   const steps = [
     { h: "Three free spins a day", p: "Spin the reels up to three times a day. Your spins refill every evening at 18:00 UK time, and the reels only ever show what you drew." },
-    { h: "Collect symbols and sets", p: "Every symbol you land joins your collection. Complete a set for a one-off bonus, and match three symbols to earn a trophy." },
+    { h: "Collect symbols and sets", p: "Every symbol you land joins your collection. Complete a set for a one-off bonus, and match three symbols for a bonus round." },
     { h: "Build your weekly tier", p: "Points count towards a tier that starts again every Sunday evening. This game is free to play with no stake and no prizes. The odds are one tap away on the play screen." },
   ];
   const s = steps[i];
@@ -94,19 +94,6 @@ export function TierUp({ from, to, pointsToNext, nextName, onClose, onShare }: {
   );
 }
 
-export function GrandDialog({ trophies, onClose, onShare }: { trophies: number; onClose: () => void; onShare?: () => void }) {
-  return (
-    <Modal title="Grand tier reached" onClose={onClose}>
-      <div className="center">
-        <RewardArt kind="trophy" size={92} />
-        <h2>Grand tier reached</h2>
-        <p>{trophies} trophies this week. This is a preview: nothing is awarded in this version.</p>
-      </div>
-      <button className="btn" onClick={onClose}>Continue</button>
-      {onShare && <button className="link" style={{ display: "block", margin: "8px auto 0" }} onClick={onShare}>Share this moment</button>}
-    </Modal>
-  );
-}
 
 export type Recap = {
   weekStart: string; tier: string; points: number; daysPlayed: number; spins: number;
@@ -119,7 +106,7 @@ export function RecapDialog({ recap, onClose }: { recap: Recap; onClose: () => v
     ["Days played", `${recap.daysPlayed} of 7`],
     ["Spins", String(recap.spins)],
     ["Matched pairs", String(recap.pairs)],
-    ["Trophies (triple matches)", String(recap.trophies)],
+    ["Triple matches", String(recap.trophies)],
     ["New symbols found", String(recap.symbolsDiscovered)],
     ["Sets completed", String(recap.setsCompleted)],
   ];

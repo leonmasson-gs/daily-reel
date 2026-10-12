@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Glyph } from "./Glyph";
-import { GrandDialog, Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
+import { Intro, RecapDialog, TierUp, type Recap as RecapData } from "./Overlays";
 import { Friends } from "./Friends";
 import { RewardArt } from "./RewardArt";
 import { advertDisclosure } from "@/lib/advert";
@@ -130,7 +130,6 @@ export default function Game() {
   const [sharing, setSharing] = useState(false);
   const [region, setRegionState] = useState("Other");
   const [minAge, setMinAge] = useState(18);
-  const [grandUp, setGrandUp] = useState(false);
   const [bonus, setBonus] = useState(false);
   const [moment, setMoment] = useState<{ m: string; tier?: string } | null>(null);
   function setRegion(r: string) {
@@ -298,7 +297,7 @@ export default function Game() {
           )}
           <button className="meter" onClick={() => { goTab("tier"); track("tier_viewed"); }} aria-label="Open weekly tier">
             <div className="row1">
-              <b>{player.week.tier.name}{player.week.grand && <span className="chip" style={{ marginLeft: 8 }}>{cfg.trophies.tierLabel}</span>}</b>
+              <b>{player.week.tier.name}</b>
               <span className="muted tnum">
                 {player.week.nextTier ? `${player.week.points} of ${player.week.nextTier.minPoints} points to ${player.week.nextTier.name}` : `${player.week.points} points, top tier`}
               </span>
@@ -306,7 +305,7 @@ export default function Game() {
             <div className="bar"><div style={{ width: `${tierPct(player)}%` }} /></div>
           </button>
 
-          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onGrand={() => setGrandUp(true)} onBonus={() => setBonus(true)} region={region} minAge={minAge} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
+          {tab === "play" && <Play cfg={cfg} player={player} setPlayer={setPlayer} refresh={refresh} feel={feel} onTierUp={setTierUp} onShare={() => setSharing(true)} onBonus={() => setBonus(true)} region={region} minAge={minAge} onOpenRewards={() => goTab("rewards")} onNotify={notifyRewards} />}
           {tab !== "play" && (
           <div className="tabpage">
           {tab === "collection" && <Collection cfg={cfg} player={player} />}
@@ -365,9 +364,6 @@ export default function Game() {
             found: cfg.odds.symbols.filter((x) => (player.collection[x.id] ?? 0) > 0).map((x) => x.id),
           }}
         />
-      )}
-      {!intro && !recap && !bonus && !tierUp && grandUp && player && (
-        <GrandDialog trophies={player.week.trophies} onClose={() => setGrandUp(false)} onShare={() => setMoment({ m: "grand" })} />
       )}
       {bonus && !intro && !recap && player && (
         <BonusRound
@@ -605,28 +601,11 @@ function WeekStrip({ week }: { week: Player["week"] }) {
   );
 }
 
-/** Three trophy slots. A trophy is earned for each triple match; three in a week reach the Grand tier (a preview). */
-function Trophies({ week, grandLabel }: { week: Player["week"]; grandLabel: string }) {
-  const n = Math.min(week.trophies, week.trophiesNeeded);
-  return (
-    <div className="trophyrow">
-      <div className="slots" role="img" aria-label={`${week.trophies} of ${week.trophiesNeeded} trophies this week`}>
-        {Array.from({ length: week.trophiesNeeded }, (_, i) => (
-          <span key={i} className={i < n ? "slot on" : "slot"}><RewardArt kind="trophy" size={30} /></span>
-        ))}
-      </div>
-      <div className="small tnum">
-        <b>{week.trophies} of {week.trophiesNeeded} trophies</b>
-        <span className="muted"> this week. {week.grand ? `${grandLabel} reached (a preview, nothing is awarded).` : `Match three symbols to earn one. Three reach the ${grandLabel}.`}</span>
-      </div>
-    </div>
-  );
-}
 
 type Feel = { sound: (k: SoundKind) => void; buzz: (p: number | number[]) => void };
 
-function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGrand, onBonus, region, minAge, onOpenRewards, onNotify }: {
-  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void; onGrand: () => void; onBonus: () => void;
+function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onBonus, region, minAge, onOpenRewards, onNotify }: {
+  cfg: Cfg; player: Player; setPlayer: (p: Player) => void; refresh: () => void; feel: Feel; onTierUp: (t: { from: string; to: string }) => void; onShare: () => void; onBonus: () => void;
   region: string; minAge: number; onOpenRewards: () => void; onNotify: () => Promise<string | null>;
 }) {
   const last = player.today.at(-1);
@@ -707,10 +686,6 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
       await sleep(900); feel.sound("tier"); feel.buzz([40, 60, 40, 60, 120]);
       onTierUp(res.j.tierUp);
     }
-    if (res.j.grandReached) {
-      await sleep(res.j.tierUp ? 300 : 900); feel.sound("tier"); feel.buzz([40, 60, 40, 60, 120]);
-      onGrand();
-    }
   }
 
   const featured = cfg.odds.symbols.find((s) => s.id === player.featured?.id);
@@ -754,7 +729,6 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
                 const extras: string[] = [];
                 if (wildNames.length > 0) extras.push(`The Wild counted as ${wildNames.join(" and ")}.`);
                 if ((result.featuredHits ?? 0) > 0) extras.push(`${featured?.name ?? "The featured symbol"} scored double today.`);
-                if (result.outcome === "triple") extras.push(`Trophy earned: ${player.week.trophies} of ${player.week.trophiesNeeded} this week.`);
                 for (const s of newSets) extras.push(`Collection: ${s.name} set finished, +${s.points} points.`);
                 if (missionDone) extras.push(`Mission done: +${missionDone.points} points.`);
                 return extras.length ? <ul className="extras">{extras.map((x) => <li key={x}>{x}</li>)}</ul> : null;
@@ -815,8 +789,6 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
       </div>
 
       <aside className="playside" aria-label="Your week">
-      {left === 0 && <Pulse day={player.week.today} />}
-
       {!player.emailSaved && (
         <EmailCard
           defaultOpen={fresh || left === 0}
@@ -825,7 +797,6 @@ function Play({ cfg, player, setPlayer, refresh, feel, onTierUp, onShare, onGran
       )}
 
       <WeekStrip week={player.week} />
-      <Trophies week={player.week} grandLabel={cfg.trophies.tierLabel} />
 
       {(left === 0 || player.emailSaved) && (
         <RewardsTeaser
@@ -882,29 +853,6 @@ function DailyTiles({ player, featured, missionName }: { player: Player; feature
   );
 }
 
-/** One tap a day on how the play felt. It goes to the stats page and answers the brief's "Enjoyable" question directly. */
-function Pulse({ day }: { day: string }) {
-  const key = "dr_pulse_day";
-  const [answered, setAnswered] = useState(true);
-  const [thanks, setThanks] = useState(false);
-  useEffect(() => { try { setAnswered(window.localStorage.getItem(key) === day); } catch { setAnswered(false); } }, [day]);
-  function send(score: 1 | 2 | 3) {
-    setAnswered(true); setThanks(true);
-    try { window.localStorage.setItem(key, day); } catch { /* asked again next time */ }
-    fetch("/api/enjoyment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ score }) }).catch(() => {});
-  }
-  if (answered) return thanks ? <p className="small muted" role="status" style={{ fontFamily: "var(--sans)", margin: "10px 2px" }}>Thanks, that helps.</p> : null;
-  return (
-    <div className="panel pulse">
-      <h3>How was today?</h3>
-      <div className="pulsebtns">
-        <button className="btn quiet" onClick={() => send(1)}><span aria-hidden>😀</span> Enjoyed it</button>
-        <button className="btn quiet" onClick={() => send(2)}><span aria-hidden>😐</span> It was okay</button>
-        <button className="btn quiet" onClick={() => send(3)}><span aria-hidden>🙁</span> Not for me</button>
-      </div>
-    </div>
-  );
-}
 
 function EmailCard({ onSaved, defaultOpen }: { onSaved: (bonus: boolean) => void; defaultOpen: boolean }) {
   // Always on the play screen until an email is saved. It starts as a slim row, and opens by itself after a spin
@@ -1019,7 +967,6 @@ function Tier({ cfg, player, onShare }: { cfg: Cfg; player: Player; onShare: () 
         {week.nextTier ? `${week.pointsToNext} more to reach ${week.nextTier.name}.` : "You have reached the top tier."}
       </p>
       <WeekStrip week={week} />
-      <Trophies week={week} grandLabel={cfg.trophies.tierLabel} />
       <ul className="ladder">
         {[...cfg.tiers].reverse().map((t) => {
           const state = t.id === week.tier.id ? "now" : week.points >= t.minPoints ? "done" : "";

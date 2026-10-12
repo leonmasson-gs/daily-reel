@@ -37,7 +37,7 @@ function Row({ e, symbols }: { e: Entry; symbols: Sym[] }) {
         ))}
       </div>
       <div className="small muted tnum" style={{ fontFamily: "var(--sans)" }}>
-        {found.size} of {symbols.length} symbols. {e.trophies ?? 0} {(e.trophies ?? 0) === 1 ? "trophy" : "trophies"} this week. {e.sets ?? 0} {(e.sets ?? 0) === 1 ? "set" : "sets"} complete.
+        {found.size} of {symbols.length} symbols. {e.sets ?? 0} {(e.sets ?? 0) === 1 ? "set" : "sets"} complete.
       </div>
     </li>
   );

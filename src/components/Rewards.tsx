@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RewardArt, type ArtKind } from "./RewardArt";
-import { drawProgress, grandProgress, partnerProgress, regularProgress, type RewardsCfg } from "@/lib/rewards";
+import { drawProgress, partnerProgress, regularProgress, type RewardsCfg } from "@/lib/rewards";
 
 type Tier = { name: string; minPoints: number };
 type Base = { rw: RewardsCfg; region: string; daysPlayed: number; points: number; tiers: Tier[]; trophies: number };
@@ -28,7 +28,6 @@ export function RewardsScreen({
   const reg = regularProgress(daysPlayed, rw);
   const par = partnerProgress(points, tiers, rw);
   const dr = drawProgress(daysPlayed, rw);
-  const gr = grandProgress(trophies, rw);
   const offer = rw.partner.offers[region as keyof typeof rw.partner.offers] ?? rw.partner.offers.Other;
 
   return (
@@ -111,21 +110,6 @@ export function RewardsScreen({
 
       </article>
 
-      {/* Grand tier */}
-      <article className="rung">
-        <div className="rung-head">
-          <RewardArt kind="trophy" size={52} />
-          <div><span className="chip dim">Top prize</span><h3>{rw.grand.title}</h3></div>
-        </div>
-        <p>{rw.grand.perk}</p>
-        <Progress value={gr.trophies} max={gr.need} label={`${gr.trophies} of ${gr.need} trophies this week${gr.earned ? ". Reached" : ""}`} />
-        {rw.grand.prize && (
-          <div className="grandprize">
-            <RewardArt kind="trophy" size={44} />
-            <div><b>{rw.grand.prize.name}</b><div className="small muted">{rw.grand.prize.detail}</div></div>
-          </div>
-        )}
-      </article>
 
       <p className="small muted" style={{ fontFamily: "var(--sans)" }}>
         Free to play. 18+ (21+ where US rules require). Example rewards for internal review. Nothing here can be won or claimed in this version.
@@ -141,7 +125,6 @@ export function RewardsTeaser({
   const reg = regularProgress(daysPlayed, rw);
   const par = partnerProgress(points, tiers, rw);
   const dr = drawProgress(daysPlayed, rw);
-  const gr = grandProgress(trophies, rw);
   const [msg, setMsg] = useState("");
   return (
     <div className="panel">
@@ -151,7 +134,6 @@ export function RewardsTeaser({
         <li><span>{rw.regular.title} badge</span><span className="tnum">{reg.days} of {reg.need} days</span></li>
         <li><span>{rw.partner.tier} partner offer</span><span className="tnum">{par.points} of {par.need} points</span></li>
         <li><span>{rw.draw.title}: {rw.draw.prizes[0]?.name.toLowerCase()} and more</span><span className="tnum">{dr.qualifies ? `${dr.entries} entries` : `${dr.days} of ${dr.need} days to enter`}</span></li>
-        <li><span>{rw.grand.title}: {rw.grand.prize?.name ?? "recognition"}</span><span className="tnum">{gr.trophies} of {gr.need} trophies</span></li>
       </ul>
       <p className="small muted" style={{ fontFamily: "var(--sans)", margin: "8px 0" }}>Internal examples for the {region} pool. Nothing is awarded in this version.</p>
 

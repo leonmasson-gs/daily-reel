@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     const band = config.bonus.bands.find((x) => x.label.toLowerCase() === m);
     const penalty = skin.bonus.marker === "ball";
     const head = m === "perfect" ? (penalty ? "Perfect penalty" : "Perfect stop") : m === "great" ? (penalty ? "Great penalty" : "Great stop") : m === "triple" ? "Triple match" : m === "tier" ? `${tier} reached` : "Grand tier reached";
-    const sub = band ? `+${band.points} points in the bonus round` : m === "triple" ? "Three of a kind. Trophy earned." : m === "tier" ? "On my way up this week" : "Three trophies in a week";
+    const sub = band ? `+${band.points} points in the bonus round` : m === "triple" ? "Three of a kind." : m === "tier" ? "On my way up this week" : "Three trophies in a week";
     return new ImageResponse(
       (
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%", height: "100%", background: k.bg, padding: 64, border: `12px solid ${k.accent}` }}>
@@ -128,7 +128,6 @@ export async function GET(req: Request) {
   const tier = (config.tiers.find((t) => t.name.toLowerCase() === (url.searchParams.get("tier") ?? "").toLowerCase()) ?? config.tiers[0]).name;
   const points = num(url.searchParams.get("pts"), 99999);
   const days = num(url.searchParams.get("days"), 7);
-  const trophies = num(url.searchParams.get("trophies"), 9);
   const found = new Set((url.searchParams.get("found") ?? "").split(",").filter((id) => config.symbols.some((s) => s.id === id)));
 
   return new ImageResponse(
@@ -152,7 +151,7 @@ export async function GET(req: Request) {
             ))}
           </div>
           <div style={{ display: "flex", fontSize: 32, color: k.text, marginTop: 24 }}>
-            {found.size} of {config.symbols.length} symbols found. {days} of 7 days played. {trophies} {trophies === 1 ? "trophy" : "trophies"}.
+            {found.size} of {config.symbols.length} symbols found. {days} of 7 days played.
           </div>
         </div>
 
